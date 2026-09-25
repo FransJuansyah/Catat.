@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/home_summary.dart';
 import '../format.dart';
-import '../models/pocket.dart';
 import '../theme/tokens.dart';
 import 'icon_badge.dart';
 import 'progress_track.dart';
@@ -10,15 +10,17 @@ import 'progress_track.dart';
 class PocketCard extends StatelessWidget {
   const PocketCard({super.key, required this.pocket, this.onTap});
 
-  final Pocket pocket;
+  final PocketView pocket;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final untouched = pocket.spent == 0;
+    final color = Color(pocket.color);
+    final balance = pocket.balance;
+    final untouched = balance.spent == 0;
     final status = untouched
-        ? 'Aman, ${rupiahShort(pocket.remaining)}'
-        : 'Sisa ${rupiahShort(pocket.remaining)}';
+        ? 'Aman, ${rupiahShort(balance.remaining)}'
+        : 'Sisa ${rupiahShort(balance.remaining)}';
 
     return Material(
       color: AppColors.card,
@@ -31,9 +33,9 @@ class PocketCard extends StatelessWidget {
           child: Row(
             children: [
               IconBadge(
-                icon: pocket.icon,
-                background: pocket.soft,
-                color: pocket.color,
+                icon: PocketVisuals.icon(pocket.iconKey),
+                background: PocketVisuals.soft(color),
+                color: color,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -54,13 +56,13 @@ class PocketCard extends StatelessWidget {
                           style: AppText.style(
                             13,
                             AppText.w700,
-                            color: untouched ? pocket.color : AppColors.muted,
+                            color: untouched ? color : AppColors.muted,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    ProgressTrack(value: pocket.usedRatio, color: pocket.color),
+                    ProgressTrack(value: balance.usedRatio, color: color),
                   ],
                 ),
               ),

@@ -50,8 +50,8 @@ Semua tabel: `id uuid`, `user_id`, `created_at`, `updated_at`, `deleted_at` (sof
 | `pockets` | tipe (`wajib`/`darurat`/`keinginan`), nama (≤20), ikon, warna, urutan, mode (`persen`/`nominal`), persen, nominal, rentang_min, rentang_maks, ingetin_di_bawah_persen, sisa_ke_darurat |
 | `periods` | bulan (YYYY-MM), mulai, selesai, gaji, dibuat_otomatis |
 | `period_allocations` | period_id, pocket_id, jatah (snapshot jatah saat periode dibuat) |
-| `transactions` | pocket_id, period_id, nominal, judul, tanggal, jam, sumber (`scan`/`manual`), merchant, foto_path, catatan |
-| `transaction_items` | transaction_id, nama, qty, harga |
+| `expenses` | pocket_id, period_id, nominal, judul, tanggal, jam, sumber (`scan`/`manual`), merchant, foto_path, catatan |
+| `expense_items` | expense_id, nama, qty, harga |
 | `transfers` | dari_pocket_id, ke_pocket_id, nominal, period_id |
 | `category_hints` | kata_kunci → pocket_tipe (belajar dari koreksi user) |
 
@@ -71,7 +71,7 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 | Fase | Isi | Layar desain | Selesai jika |
 |---|---|---|---|
 | **F0 Fondasi** ✅ sebagian | Theme & komponen, navigasi, Beranda | 03 | ✅ sudah jalan di HP |
-| **F1 Fondasi data** | drift DB + migrasi, repository, Riverpod, domain + unit test, ganti DemoData | – | Beranda baca dari DB lokal |
+| **F1 Fondasi data** ✅ | drift DB + migrasi, repository, Riverpod, domain + unit test, ganti DemoData | – | Beranda baca dari DB lokal |
 | **F2 Pencatatan inti** | Catat manual, detail & hapus transaksi, detail kantong, Catatan harian (kalender), empty state | 06, 11, 12, 13, 26 | Bisa pakai harian tanpa internet |
 | **F3 Onboarding & gaji** | Splash, setup gaji, pilih template, periode otomatis tiap gajian, layar Gajian masuk | 00, 02, 18, 19 | Gajian bulan depan otomatis masuk |
 | **F4 Kustomisasi kantong** | Atur/edit kantong (nama, ikon, warna), jatah & rentang, validasi 100%, pindah saldo, peringatan hampir habis | 20–25 | Semua aturan kantong jalan & dites |
