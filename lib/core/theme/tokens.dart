@@ -77,36 +77,26 @@ abstract final class AppText {
   static const w800 = FontWeight.w800;
 }
 
-/// Tipe kantong tetap (dipakai laporan); nama/ikon/warna bisa dikustom user.
-enum PocketType { wajib, darurat, keinginan }
-
-class PocketStyle {
-  const PocketStyle(this.defaultName, this.icon, this.color, this.soft);
-  final String defaultName;
-  final IconData icon;
-  final Color color;
-  final Color soft;
-
-  static const defaults = {
-    PocketType.wajib: PocketStyle(
-      'Wajib',
-      LucideIcons.house,
-      Color(0xFF6D5DFC),
-      Color(0xFFEEEBFF),
-    ),
-    PocketType.darurat: PocketStyle(
-      'Darurat',
-      LucideIcons.shield,
-      Color(0xFF12A36B),
-      Color(0xFFE2F6EC),
-    ),
-    PocketType.keinginan: PocketStyle(
-      'Keinginan',
-      LucideIcons.sparkles,
-      Color(0xFFFF4F7B),
-      Color(0xFFFFE8EE),
-    ),
+/// Ikon & warna kantong (disimpan di DB sebagai `iconKey` dan ARGB int).
+abstract final class PocketVisuals {
+  static const icons = <String, IconData>{
+    'house': LucideIcons.house,
+    'shield': LucideIcons.shield,
+    'sparkles': LucideIcons.sparkles,
+    'coffee': LucideIcons.coffee,
+    'plane': LucideIcons.plane,
+    'gamepad': LucideIcons.gamepad2,
+    'music': LucideIcons.music,
+    'gift': LucideIcons.gift,
+    'heart': LucideIcons.heart,
+    'shirt': LucideIcons.shirt,
   };
+
+  static IconData icon(String key) => icons[key] ?? LucideIcons.wallet;
+
+  /// Latar lembut = warna kantong 12% di atas putih (mis. #6D5DFC → #EEEBFF).
+  static Color soft(Color color) =>
+      Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
 
   /// Palet yang bisa dipilih user saat kustomisasi (layar 21).
   static const palette = [

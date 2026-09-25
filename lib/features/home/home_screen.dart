@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -6,67 +7,94 @@ import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_card.dart';
-import '../../data/demo_data.dart';
+import '../../data/providers.dart';
+import '../../domain/home_summary.dart';
 
 /// Layar 03 · Beranda — design/screens/03 · Beranda.png
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(homeSummaryProvider);
     return SafeArea(
       bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.screenX,
-          8,
-          AppSpace.screenX,
-          24,
-        ),
-        children: [
-          const _Header(),
-          const SizedBox(height: AppSpace.section),
-          const _BalanceHero(),
-          const SizedBox(height: AppSpace.section),
-          _ScanBanner(onTap: () => context.push('/scan')),
-          const SizedBox(height: AppSpace.section),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '3 Kantong kamu',
-                  style: AppText.style(17, AppText.w800, spacingPercent: -1),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.push('/kantong'),
-                child: Text(
-                  'Atur',
-                  style: AppText.style(
-                    13,
-                    AppText.w700,
-                    color: AppColors.muted,
-                  ),
-                ),
-              ),
-            ],
+      child: switch (summary) {
+        AsyncData(:final value) => _HomeContent(summary: value),
+        AsyncError() => Center(
+          child: Text(
+            'Gagal memuat data. Coba buka ulang aplikasi.',
+            style: AppText.style(14, AppText.w500, color: AppColors.muted),
           ),
-          const SizedBox(height: AppSpace.section),
-          for (final (i, pocket) in DemoData.pockets.indexed) ...[
-            if (i > 0) const SizedBox(height: 10),
-            PocketCard(
-              pocket: pocket,
-              onTap: () => context.push('/kantong/${pocket.id}'),
-            ),
-          ],
-        ],
-      ),
+        ),
+        _ => const SizedBox.shrink(),
+      },
     );
   }
 }
 
+class _HomeContent extends StatelessWidget {
+  const _HomeContent({required this.summary});
+
+  final HomeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.screenX,
+        8,
+        AppSpace.screenX,
+        24,
+      ),
+      children: [
+        _Header(name: summary.userName, daysToPayday: summary.daysToPayday),
+        const SizedBox(height: AppSpace.section),
+        _BalanceHero(summary: summary),
+        const SizedBox(height: AppSpace.section),
+        _ScanBanner(onTap: () => context.push('/scan')),
+        const SizedBox(height: AppSpace.section),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${summary.pockets.length} Kantong kamu',
+                style: AppText.style(17, AppText.w800, spacingPercent: -1),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => context.push('/kantong'),
+              child: Text(
+                'Atur',
+                style: AppText.style(13, AppText.w700, color: AppColors.muted),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.section),
+        for (final (i, pocket) in summary.pockets.indexed) ...[
+          if (i > 0) const SizedBox(height: 10),
+          PocketCard(
+            pocket: pocket,
+            onTap: () => context.push('/kantong/${pocket.id}'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+String paydayHint(int days) => switch (days) {
+  0 => 'Hari ini gajian, asik!',
+  1 => 'Gajian besok, tahan dulu ya',
+  _ => 'Gajian $days hari lagi',
+};
+
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.name, required this.daysToPayday});
+
+  final String name;
+  final int daysToPayday;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +109,7 @@ class _Header extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Text(
-            DemoData.userName[0],
+            name.isEmpty ? '?' : name[0].toUpperCase(),
             style: AppText.style(18, AppText.w800),
           ),
         ),
@@ -91,12 +119,12 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hai, ${DemoData.userName}',
+                'Hai, $name',
                 style: AppText.style(18, AppText.w800, spacingPercent: -1),
               ),
               const SizedBox(height: 1),
               Text(
-                'Gajian besok, tahan dulu ya',
+                paydayHint(daysToPayday),
                 style: AppText.style(13, AppText.w500, color: AppColors.muted),
               ),
             ],
@@ -113,10 +141,13 @@ class _Header extends StatelessWidget {
 }
 
 class _BalanceHero extends StatelessWidget {
-  const _BalanceHero();
+  const _BalanceHero({required this.summary});
+
+  final HomeSummary summary;
 
   @override
   Widget build(BuildContext context) {
+    final onTrack = summary.onTrack;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -135,7 +166,7 @@ class _BalanceHero extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              rupiah(DemoData.remaining),
+              rupiah(summary.remaining),
               style: AppText.style(
                 38,
                 AppText.w800,
@@ -149,7 +180,7 @@ class _BalanceHero extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'dari gaji ${rupiah(DemoData.salary)}',
+                  'dari gaji ${rupiah(summary.salary)}',
                   style: AppText.style(
                     13,
                     AppText.w500,
@@ -163,19 +194,28 @@ class _BalanceHero extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.lime,
+                  color: onTrack ? AppColors.lime : const Color(0xFFFFE8EE),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      LucideIcons.check,
+                    Icon(
+                      onTrack ? LucideIcons.check : LucideIcons.triangleAlert,
                       size: 14,
-                      color: AppColors.ink,
+                      color: onTrack ? AppColors.ink : const Color(0xFFB3264F),
                     ),
                     const SizedBox(width: 4),
-                    Text('On track', style: AppText.style(12, AppText.w800)),
+                    Text(
+                      onTrack ? 'On track' : 'Rem dulu',
+                      style: AppText.style(
+                        12,
+                        AppText.w800,
+                        color: onTrack
+                            ? AppColors.ink
+                            : const Color(0xFFB3264F),
+                      ),
+                    ),
                   ],
                 ),
               ),
