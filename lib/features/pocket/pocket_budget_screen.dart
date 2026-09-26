@@ -241,22 +241,20 @@ class _PocketBudgetScreenState extends ConsumerState<PocketBudgetScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i <= 4; i++)
-                  Text(
-                    tick(i),
-                    style: AppText.style(
-                      11,
-                      AppText.w500,
-                      color: AppColors.faint,
-                    ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (var i = 0; i <= 4; i++)
+                Text(
+                  tick(i),
+                  style: AppText.style(
+                    11,
+                    AppText.w500,
+                    color: AppColors.faint,
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: 14),
           Row(
@@ -279,7 +277,6 @@ class _PocketBudgetScreenState extends ConsumerState<PocketBudgetScreen> {
                 const SizedBox(width: 6),
               ],
               Expanded(
-                flex: 2,
                 child: PillChip(
                   label: custom && value > 0
                       ? (nominal

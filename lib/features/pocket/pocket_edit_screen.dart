@@ -72,12 +72,21 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
     _name.text = p.name;
   }
 
-  void _save(PocketConfig p) {
+  void _applyToDraft(PocketConfig p) {
+    final name = _name.text.trim();
     ref
         .read(pocketDraftProvider.notifier)
         .updatePocket(
-          p.copyWith(name: _name.text.trim(), iconKey: _iconKey, color: _color),
+          p.copyWith(
+            name: name.isEmpty ? null : name,
+            iconKey: _iconKey,
+            color: _color,
+          ),
         );
+  }
+
+  void _save(PocketConfig p) {
+    _applyToDraft(p);
     context.pop();
   }
 
@@ -331,6 +340,8 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
       child: InkWell(
         onTap: () {
           _focus.unfocus();
+          // Nama/ikon/warna ikut ke layar 22 (judul & warna slider).
+          _applyToDraft(pocket);
           context.push('/jatah-kantong/${pocket.id}');
         },
         child: Padding(

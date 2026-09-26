@@ -74,7 +74,7 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 | **F1 Fondasi data** ✅ | drift DB + migrasi, repository, Riverpod, domain + unit test, ganti DemoData | – | Beranda baca dari DB lokal |
 | **F2 Pencatatan inti** ✅ | Catat manual, detail & hapus transaksi, detail kantong, Catatan harian (kalender), empty state | 06, 11, 12, 13, 26 | Bisa pakai harian tanpa internet |
 | **F3 Onboarding & multi pemasukan** ✅ | Splash & ikon, pilih sumber uang (gaji bulanan / uang jajan harian-mingguan-bulanan / penghasilan tidak tetap), setup per mode, pilih template, periode otomatis, layar Gajian masuk, tambah pemasukan yang langsung dibagi ke kantong, pemasukan di Catatan | 00, 01, 02, 18, 19, 27–31 | Gajian/uang jajan otomatis masuk; pemasukan bebas langsung kebagi |
-| **F4 Kustomisasi kantong** 🚧 | Atur/edit kantong (nama, ikon, warna), jatah & rentang, validasi 100%, pindah saldo, peringatan hampir habis | 20–25 | Semua aturan kantong jalan & dites |
+| **F4 Kustomisasi kantong** ✅ | Atur/edit kantong (nama, ikon, warna), jatah & rentang, validasi 100%, pindah saldo, peringatan hampir habis | 20–25 | Semua aturan kantong jalan & dites |
 | **F5 Scan struk** | Kamera, ML Kit, parser struk Indonesia (Indomaret, Alfamart, resto, e-wallet), tebak kantong, konfirmasi, simpan foto | 04, 05, 09, 10 | ≥80% struk umum terbaca benar totalnya |
 | **F6 Slip gaji** | Upload foto/PDF slip → baca nominal gaji bersih | 02, 08 | Nominal terisi otomatis, bisa dikoreksi |
 | **F7 Laporan & export** | Laporan bulanan, insight, export PDF/Excel bulanan / 3 bulan / setahun | 07, 14, 15, 16 | File terbuka rapi di HP & laptop |

@@ -99,6 +99,8 @@ SliderThemeData pocketSliderTheme(BuildContext context, Color color) =>
       trackShape: const RoundedRectSliderTrackShape(),
       rangeTrackShape: const RoundedRectRangeSliderTrackShape(),
       showValueIndicator: ShowValueIndicator.never,
+      // Garis selebar kartu (sejajar label 0%–100%), sisakan ruang knob.
+      padding: const EdgeInsets.symmetric(horizontal: 13),
     );
 
 void _paintRing(Canvas canvas, Offset center, Color color) {
