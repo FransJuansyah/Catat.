@@ -4,11 +4,13 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/allocation.dart';
+import '../../domain/expense_icon.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
 import '../../domain/pocket_balance.dart';
 import '../../domain/templates.dart';
 import '../../domain/types.dart';
+import '../../domain/views.dart';
 import '../local/database.dart';
 
 class ExpenseItemInput {
@@ -186,6 +188,32 @@ class BudgetRepository {
     );
   }
 
+  /// Ubah pengeluaran (layar 11 mode edit). Item struk tidak diubah.
+  Future<void> updateExpense(
+    String id, {
+    required String pocketId,
+    required int amount,
+    required String title,
+    required DateTime occurredAt,
+  }) {
+    if (amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'harus lebih dari 0');
+    }
+    return _db.transaction(() async {
+      final period = await _periodFor(occurredAt);
+      await (_db.update(_db.expenses)..where((t) => t.id.equals(id))).write(
+        ExpensesCompanion(
+          pocketId: Value(pocketId),
+          periodId: Value(period.id),
+          amount: Value(amount),
+          title: Value(title),
+          occurredAt: Value(occurredAt),
+          updatedAt: Value(_now()),
+        ),
+      );
+    });
+  }
+
   // ----------------------------------------------------------------- home
 
   Future<HomeSummary> loadHome() async {
@@ -195,25 +223,12 @@ class BudgetRepository {
               ..where((t) => t.deletedAt.isNull())
               ..limit(1))
             .getSingleOrNull();
-    final pockets = await _activePockets();
-    final balances = await _balances(period.id);
-
     final payPeriod = PayPeriod(
       dateOnly(period.startDate),
       dateOnly(period.endDate),
     );
     final today = _now();
-    final views = [
-      for (final p in pockets)
-        PocketView(
-          id: p.id,
-          type: p.type,
-          name: p.name,
-          iconKey: p.iconKey,
-          color: p.color,
-          balance: balances[p.id] ?? const PocketBalance(allocation: 0),
-        ),
-    ];
+    final views = await _pocketViews(period.id);
     final budget = views.fold<int>(0, (s, v) => s + v.balance.available);
     final spent = views.fold<int>(0, (s, v) => s + v.balance.spent);
 
@@ -231,17 +246,142 @@ class BudgetRepository {
   }
 
   /// Beranda yang otomatis ter-update setiap ada perubahan data.
-  Stream<HomeSummary> watchHome() {
-    final controller = StreamController<HomeSummary>();
+  Stream<HomeSummary> watchHome() => _watch(loadHome);
+
+  // ------------------------------------------------------------ catatan
+
+  /// Pengeluaran di satu tanggal, urut dari pagi (layar 06).
+  Future<DayNotes> loadDay(DateTime day) async {
+    final start = dateOnly(day);
+    final end = DateTime(start.year, start.month, start.day + 1);
+    final rows =
+        await (_db.select(_db.expenses)
+              ..where(
+                (t) =>
+                    t.deletedAt.isNull() &
+                    t.occurredAt.isBiggerOrEqualValue(start) &
+                    t.occurredAt.isSmallerThanValue(end),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+            .get();
+    return DayNotes(start, await _entries(rows));
+  }
+
+  Stream<DayNotes> watchDay(DateTime day) => _watch(() => loadDay(day));
+
+  /// Titik warna kantong per tanggal + tanggal gajian (layar 06).
+  Future<CalendarMonth> loadMonth(int year, int month) async {
+    final first = DateTime(year, month);
+    final next = DateTime(year, month + 1);
+    final rows =
+        await (_db.select(_db.expenses)..where(
+              (t) =>
+                  t.deletedAt.isNull() &
+                  t.occurredAt.isBiggerOrEqualValue(first) &
+                  t.occurredAt.isSmallerThanValue(next),
+            ))
+            .get();
+    final pockets = await _allPockets();
+    final order = {for (final p in pockets) p.id: p.sortOrder};
+    final colorOf = {for (final p in pockets) p.id: p.color};
+
+    final byDay = <int, Set<String>>{};
+    for (final r in rows) {
+      byDay.putIfAbsent(r.occurredAt.day, () => {}).add(r.pocketId);
+    }
+    final dots = {
+      for (final MapEntry(key: day, value: ids) in byDay.entries)
+        day:
+            (ids.toList()
+                  ..sort((a, b) => (order[a] ?? 0).compareTo(order[b] ?? 0)))
+                .map((id) => colorOf[id] ?? 0xFFA1A1AA)
+                .toList(),
+    };
+    final settings = await _salarySettings();
+    return CalendarMonth(
+      year: year,
+      month: month,
+      dots: dots,
+      paydayDay: settings == null
+          ? null
+          : paydayIn(year, month, settings.payday).day,
+    );
+  }
+
+  Stream<CalendarMonth> watchMonth(int year, int month) =>
+      _watch(() => loadMonth(year, month));
+
+  // -------------------------------------------------------------- detail
+
+  /// Detail satu pengeluaran, `null` jika tidak ada / sudah dihapus (layar 13).
+  Future<ExpenseDetail?> loadExpense(String id) async {
+    final row = await (_db.select(
+      _db.expenses,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
+    if (row == null) return null;
+    final items = await (_db.select(
+      _db.expenseItems,
+    )..where((t) => t.expenseId.equals(id) & t.deletedAt.isNull())).get();
+    return ExpenseDetail(
+      entry: (await _entries([row])).single,
+      items: [for (final i in items) ExpenseLine(i.name, i.qty, i.price)],
+      merchant: row.merchant,
+      photoPath: row.photoPath,
+      note: row.note,
+    );
+  }
+
+  Stream<ExpenseDetail?> watchExpense(String id) =>
+      _watch(() => loadExpense(id));
+
+  /// Kantong di periode berjalan + riwayatnya, terbaru dulu (layar 12).
+  Future<PocketDetail?> loadPocket(String pocketId) async {
+    final period = await ensureCurrentPeriod();
+    final views = await _pocketViews(period.id);
+    final view = views.where((v) => v.id == pocketId).firstOrNull;
+    if (view == null) return null;
+    final pocketRow = await (_db.select(
+      _db.pockets,
+    )..where((t) => t.id.equals(pocketId))).getSingle();
+    final rows =
+        await (_db.select(_db.expenses)
+              ..where(
+                (t) =>
+                    t.pocketId.equals(pocketId) &
+                    t.periodId.equals(period.id) &
+                    t.deletedAt.isNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
+            .get();
+    final payPeriod = PayPeriod(
+      dateOnly(period.startDate),
+      dateOnly(period.endDate),
+    );
+    return PocketDetail(
+      pocket: view,
+      expenses: await _entries(rows),
+      daysToPayday: payPeriod.daysUntilNextPayday(_now()),
+      lowThresholdPercent: pocketRow.lowThresholdPercent,
+    );
+  }
+
+  Stream<PocketDetail?> watchPocket(String pocketId) =>
+      _watch(() => loadPocket(pocketId));
+
+  // ---------------------------------------------------------- streaming
+
+  /// Jalankan [load] ulang setiap ada perubahan data, berurutan supaya hasil
+  /// lama tidak menimpa hasil baru.
+  Stream<T> _watch<T>(Future<T> Function() load) {
+    final controller = StreamController<T>();
     StreamSubscription<void>? updates;
     var queue = Future<void>.value();
 
-    // Diproses berurutan supaya hasil lama tidak menimpa hasil baru.
     void refresh() {
       queue = queue.then((_) async {
         try {
-          final summary = await loadHome();
-          if (!controller.isClosed) controller.add(summary);
+          final value = await load();
+          if (!controller.isClosed) controller.add(value);
         } catch (e, st) {
           if (!controller.isClosed) controller.addError(e, st);
         }
@@ -274,6 +414,54 @@ class BudgetRepository {
             ..where((t) => t.deletedAt.isNull())
             ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
           .get();
+
+  /// Termasuk kantong yang sudah dihapus, agar riwayat lama tetap bernama.
+  Future<List<PocketRow>> _allPockets() => (_db.select(
+    _db.pockets,
+  )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).get();
+
+  Future<List<PocketView>> _pocketViews(String periodId) async {
+    final pockets = await _activePockets();
+    final balances = await _balances(periodId);
+    return [
+      for (final p in pockets)
+        PocketView(
+          id: p.id,
+          type: p.type,
+          name: p.name,
+          iconKey: p.iconKey,
+          color: p.color,
+          balance: balances[p.id] ?? const PocketBalance(allocation: 0),
+        ),
+    ];
+  }
+
+  Future<List<ExpenseEntry>> _entries(List<ExpenseRow> rows) async {
+    if (rows.isEmpty) return const [];
+    final refs = {
+      for (final p in await _allPockets())
+        p.id: PocketRef(
+          id: p.id,
+          type: p.type,
+          name: p.name,
+          iconKey: p.iconKey,
+          color: p.color,
+        ),
+    };
+    return [
+      for (final r in rows)
+        if (refs[r.pocketId] case final pocket?)
+          ExpenseEntry(
+            id: r.id,
+            title: r.title,
+            amount: r.amount,
+            occurredAt: r.occurredAt,
+            source: r.source,
+            pocket: pocket,
+            iconKey: guessExpenseIcon(r.title, fallback: pocket.iconKey),
+          ),
+    ];
+  }
 
   PocketRule _ruleOf(PocketRow p) => PocketRule(
     pocketId: p.id,

@@ -72,7 +72,7 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 |---|---|---|---|
 | **F0 Fondasi** ✅ sebagian | Theme & komponen, navigasi, Beranda | 03 | ✅ sudah jalan di HP |
 | **F1 Fondasi data** ✅ | drift DB + migrasi, repository, Riverpod, domain + unit test, ganti DemoData | – | Beranda baca dari DB lokal |
-| **F2 Pencatatan inti** | Catat manual, detail & hapus transaksi, detail kantong, Catatan harian (kalender), empty state | 06, 11, 12, 13, 26 | Bisa pakai harian tanpa internet |
+| **F2 Pencatatan inti** ✅ | Catat manual, detail & hapus transaksi, detail kantong, Catatan harian (kalender), empty state | 06, 11, 12, 13, 26 | Bisa pakai harian tanpa internet |
 | **F3 Onboarding & gaji** | Splash, setup gaji, pilih template, periode otomatis tiap gajian, layar Gajian masuk | 00, 02, 18, 19 | Gajian bulan depan otomatis masuk |
 | **F4 Kustomisasi kantong** | Atur/edit kantong (nama, ikon, warna), jatah & rentang, validasi 100%, pindah saldo, peringatan hampir habis | 20–25 | Semua aturan kantong jalan & dites |
 | **F5 Scan struk** | Kamera, ML Kit, parser struk Indonesia (Indomaret, Alfamart, resto, e-wallet), tebak kantong, konfirmasi, simpan foto | 04, 05, 09, 10 | ≥80% struk umum terbaca benar totalnya |

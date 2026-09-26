@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
+import 'features/expense/expense_detail_screen.dart';
+import 'features/expense/expense_form_screen.dart';
+import 'features/expense/saved_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/notes/notes_screen.dart';
 import 'features/placeholder_screen.dart';
+import 'features/pocket/pocket_detail_screen.dart';
 
 final _router = GoRouter(
   initialLocation: '/beranda',
@@ -19,11 +25,7 @@ final _router = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/catatan',
-              builder: (_, _) =>
-                  const PlaceholderScreen(title: 'Catatan', designRef: '06'),
-            ),
+            GoRoute(path: '/catatan', builder: (_, _) => const NotesScreen()),
           ],
         ),
         StatefulShellBranch(
@@ -53,7 +55,30 @@ final _router = GoRouter(
         designRef: '04',
         dark: true,
         showBack: true,
+        actionLabel: 'Ketik manual dulu',
+        actionRoute: '/catat',
       ),
+    ),
+    GoRoute(
+      path: '/catat',
+      builder: (_, state) {
+        final q = state.uri.queryParameters;
+        return ExpenseFormScreen(
+          initialDate: DateTime.tryParse(q['date'] ?? ''),
+          initialPocketId: q['pocket'],
+          editId: q['edit'],
+        );
+      },
+    ),
+    GoRoute(
+      path: '/tercatat/:id',
+      builder: (_, state) =>
+          SavedScreen(expenseId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/transaksi/:id',
+      builder: (_, state) =>
+          ExpenseDetailScreen(expenseId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/kantong',
@@ -65,11 +90,8 @@ final _router = GoRouter(
       routes: [
         GoRoute(
           path: ':id',
-          builder: (_, _) => const PlaceholderScreen(
-            title: 'Detail kantong',
-            designRef: '12',
-            showBack: true,
-          ),
+          builder: (_, state) =>
+              PocketDetailScreen(pocketId: state.pathParameters['id']!),
         ),
       ],
     ),
@@ -94,6 +116,9 @@ class CatatApp extends StatelessWidget {
       title: 'catat.',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      locale: const Locale('id'),
+      supportedLocales: const [Locale('id')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: _router,
     );
   }
