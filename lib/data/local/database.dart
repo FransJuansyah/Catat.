@@ -23,11 +23,29 @@ class Profiles extends Table with SyncedRow {
   TextColumn get name => text()();
 }
 
+/// Pengaturan pemasukan user (nama tabel historis: dulu hanya gaji).
 class SalarySettings extends Table with SyncedRow {
+  /// Nominal pemasukan otomatis per siklus (gaji / uang jajan). 0 untuk
+  /// penghasilan tidak tetap.
   IntColumn get netSalary =>
       integer().check(netSalary.isBiggerOrEqualValue(0))();
+
+  /// Tanggal (1–31) untuk siklus bulanan.
   IntColumn get payday => integer().check(payday.isBetweenValues(1, 31))();
   BoolColumn get autoAdd => boolean().withDefault(const Constant(true))();
+  TextColumn get incomeMode =>
+      textEnum<IncomeMode>().withDefault(Constant(IncomeMode.salary.name))();
+  TextColumn get frequency => textEnum<IncomeFrequency>().withDefault(
+    Constant(IncomeFrequency.monthly.name),
+  )();
+
+  /// Hari (1 = Senin … 7 = Minggu) untuk siklus mingguan.
+  IntColumn get weekday => integer().withDefault(const Constant(1))();
+
+  /// Perkiraan pemasukan sebulan (opsional, penghasilan tidak tetap).
+  IntColumn get monthlyEstimate => integer().nullable()();
+  BoolColumn get incomeReminder =>
+      boolean().withDefault(const Constant(false))();
 }
 
 @DataClassName('PocketRow')
@@ -108,6 +126,27 @@ class Transfers extends Table with SyncedRow {
   DateTimeColumn get occurredAt => dateTime()();
 }
 
+/// Pemasukan yang ditambah user (penghasilan tidak tetap, bonus, dll.).
+@DataClassName('IncomeRow')
+class Incomes extends Table with SyncedRow {
+  TextColumn get periodId => text().references(Periods, #id)();
+  IntColumn get amount => integer().check(amount.isBiggerThanValue(0))();
+  TextColumn get title => text()();
+  DateTimeColumn get occurredAt => dateTime()();
+}
+
+/// Bagian satu pemasukan untuk tiap kantong.
+class IncomeAllocations extends Table with SyncedRow {
+  TextColumn get incomeId => text().references(Incomes, #id)();
+  TextColumn get pocketId => text().references(Pockets, #id)();
+  IntColumn get amount => integer()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {incomeId, pocketId},
+  ];
+}
+
 @DriftDatabase(
   tables: [
     Profiles,
@@ -118,6 +157,8 @@ class Transfers extends Table with SyncedRow {
     Expenses,
     ExpenseItems,
     Transfers,
+    Incomes,
+    IncomeAllocations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -126,7 +167,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -135,6 +176,16 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(periods, periods.celebrated);
         // Periode lama dianggap sudah dirayakan supaya tidak muncul ulang.
         await customStatement('UPDATE periods SET celebrated = 1');
+      }
+      if (from < 3) {
+        // Multi pemasukan: user lama otomatis bertipe gaji bulanan (default).
+        await m.addColumn(salarySettings, salarySettings.incomeMode);
+        await m.addColumn(salarySettings, salarySettings.frequency);
+        await m.addColumn(salarySettings, salarySettings.weekday);
+        await m.addColumn(salarySettings, salarySettings.monthlyEstimate);
+        await m.addColumn(salarySettings, salarySettings.incomeReminder);
+        await m.createTable(incomes);
+        await m.createTable(incomeAllocations);
       }
     },
     beforeOpen: (details) async {

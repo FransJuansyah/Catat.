@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/home_summary.dart';
 import '../domain/templates.dart';
+import '../domain/types.dart';
 import '../domain/views.dart';
 import 'local/database.dart';
 import 'repositories/budget_repository.dart';
@@ -57,30 +58,63 @@ final pocketDetailProvider = StreamProvider.autoDispose
     );
 
 // ------------------------------------------------------------- onboarding
+final incomeDetailProvider = StreamProvider.autoDispose
+    .family<IncomeDetail?, String>(
+      (ref, id) => ref.watch(budgetRepositoryProvider).watchIncome(id),
+    );
 
-/// Isian onboarding (layar 02 & 19) sebelum disimpan.
+// ------------------------------------------------------------- onboarding
+
+/// Isian onboarding (layar 27, 02/28/29, 19) sebelum disimpan.
 class OnboardingDraft {
   const OnboardingDraft({
-    this.salary = 0,
+    this.mode = IncomeMode.salary,
+    this.amount = 0,
+    this.frequency = IncomeFrequency.monthly,
     this.payday = 25,
+    this.weekday = 1,
     this.autoAdd = true,
+    this.monthlyEstimate = 0,
+    this.reminder = true,
     this.template = PocketTemplates.klasik,
   });
 
-  final int salary;
+  final IncomeMode mode;
+
+  /// Gaji per bulan / uang jajan per siklus. Tidak dipakai untuk tidak tetap.
+  final int amount;
+  final IncomeFrequency frequency;
   final int payday;
+  final int weekday;
   final bool autoAdd;
+
+  /// Perkiraan sebulan (opsional, tidak tetap). 0 = tidak diisi.
+  final int monthlyEstimate;
+  final bool reminder;
   final PocketTemplate template;
 
+  /// Tombol "Lanjut" di langkah 3 boleh ditekan.
+  bool get amountReady => mode == IncomeMode.irregular || amount > 0;
+
   OnboardingDraft copyWith({
-    int? salary,
+    IncomeMode? mode,
+    int? amount,
+    IncomeFrequency? frequency,
     int? payday,
+    int? weekday,
     bool? autoAdd,
+    int? monthlyEstimate,
+    bool? reminder,
     PocketTemplate? template,
   }) => OnboardingDraft(
-    salary: salary ?? this.salary,
+    mode: mode ?? this.mode,
+    amount: amount ?? this.amount,
+    frequency: frequency ?? this.frequency,
     payday: payday ?? this.payday,
+    weekday: weekday ?? this.weekday,
     autoAdd: autoAdd ?? this.autoAdd,
+    monthlyEstimate: monthlyEstimate ?? this.monthlyEstimate,
+    reminder: reminder ?? this.reminder,
     template: template ?? this.template,
   );
 }
@@ -89,24 +123,44 @@ class OnboardingController extends Notifier<OnboardingDraft> {
   @override
   OnboardingDraft build() => const OnboardingDraft();
 
-  void setSalary(int v) => state = state.copyWith(salary: v);
+  /// Ganti tipe pemasukan → template & frekuensi default ikut menyesuaikan.
+  void setMode(IncomeMode m) => state = state.copyWith(
+    mode: m,
+    template: PocketTemplates.forMode(m).first,
+    frequency: m == IncomeMode.allowance
+        ? IncomeFrequency.weekly
+        : IncomeFrequency.monthly,
+  );
+  void setAmount(int v) => state = state.copyWith(amount: v);
+  void setFrequency(IncomeFrequency v) => state = state.copyWith(frequency: v);
   void setPayday(int v) => state = state.copyWith(payday: v);
+  void setWeekday(int v) => state = state.copyWith(weekday: v);
   void setAutoAdd(bool v) => state = state.copyWith(autoAdd: v);
+  void setMonthlyEstimate(int v) => state = state.copyWith(monthlyEstimate: v);
+  void setReminder(bool v) => state = state.copyWith(reminder: v);
   void setTemplate(PocketTemplate t) => state = state.copyWith(template: t);
 
   /// Simpan semuanya & buat periode pertama.
   Future<void> finish() async {
     final repo = ref.read(budgetRepositoryProvider);
+    final d = state;
     await repo.setupBudget(
-      netSalary: state.salary,
-      payday: state.payday,
-      autoAdd: state.autoAdd,
-      template: state.template,
+      incomeMode: d.mode,
+      netSalary: d.mode == IncomeMode.irregular ? 0 : d.amount,
+      frequency: d.frequency,
+      payday: d.payday,
+      weekday: d.weekday,
+      autoAdd: d.autoAdd,
+      monthlyEstimate: d.monthlyEstimate > 0 ? d.monthlyEstimate : null,
+      incomeReminder: d.mode == IncomeMode.irregular && d.reminder,
+      template: d.template,
     );
     final period = await repo.ensureCurrentPeriod();
-    // Gaji bulan pertama baru saja diisi user, jadi langsung dipakai walau
-    // "Tambah otomatis" mati (bulan-bulan berikutnya diisi manual).
-    if (!state.autoAdd) await repo.setPeriodSalary(period.id, state.salary);
+    // Pemasukan pertama baru saja diisi user, jadi langsung dipakai walau
+    // "Tambah otomatis" mati (periode berikutnya diisi manual).
+    if (d.mode != IncomeMode.irregular && !d.autoAdd) {
+      await repo.setPeriodSalary(period.id, d.amount);
+    }
     ref.invalidate(isSetUpProvider);
   }
 }

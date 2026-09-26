@@ -163,3 +163,91 @@ class SplitBar extends StatelessWidget {
     );
   }
 }
+
+/// Pilihan segmen (mis. Harian / Mingguan / Bulanan) — layar 20, 28.
+class SegmentedTabs<T> extends StatelessWidget {
+  const SegmentedTabs({
+    super.key,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final List<(T, String)> items;
+  final T value;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.segmentBg,
+        borderRadius: BorderRadius.circular(AppRadius.segment),
+      ),
+      child: Row(
+        children: [
+          for (final (v, label) in items)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: v == value ? AppColors.card : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    label,
+                    style: AppText.style(
+                      13,
+                      v == value ? AppText.w800 : AppText.w500,
+                      color: v == value ? AppColors.ink : AppColors.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kartu pilihan besar dengan radio (layar 19, 27).
+class ChoiceCard extends StatelessWidget {
+  const ChoiceCard({
+    super.key,
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
+
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        side: BorderSide(
+          color: selected ? AppColors.ink : AppColors.line,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.cardPad),
+          child: child,
+        ),
+      ),
+    );
+  }
+}

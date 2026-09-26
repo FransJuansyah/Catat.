@@ -108,7 +108,7 @@ void main() {
 
     expect(await container.read(isSetUpProvider.future), isFalse);
     container.read(onboardingProvider.notifier)
-      ..setSalary(5000000)
+      ..setAmount(5000000)
       ..setPayday(1)
       ..setAutoAdd(false)
       ..setTemplate(PocketTemplates.pejuangNabung);
