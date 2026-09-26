@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/month_picker.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/list_card.dart';
@@ -37,59 +38,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     final months = [
       for (var i = 0; i < 12; i++) DateTime(today.year, today.month - i),
     ];
-    final picked = await showModalBottomSheet<DateTime>(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.hero),
-        ),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppColors.disabledBg,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final m in months)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          monthYearLong(m),
-                          style: AppText.style(
-                            15,
-                            m == _month ? AppText.w800 : AppText.w500,
-                          ),
-                        ),
-                        trailing: m == _month
-                            ? const Icon(
-                                LucideIcons.check,
-                                size: 18,
-                                color: AppColors.ink,
-                              )
-                            : null,
-                        onTap: () => Navigator.pop(context, m),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final picked = await showMonthSheet(
+      context,
+      months: months,
+      selected: _month,
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -124,7 +76,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   style: AppText.style(26, AppText.w800, spacingPercent: -3),
                 ),
               ),
-              _MonthPill(
+              MonthPill(
                 label: monthYear(_month),
                 onTap: () => _pickMonth(today),
               ),
@@ -205,40 +157,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
 String _isoDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-class _MonthPill extends StatelessWidget {
-  const _MonthPill({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.card,
-      shape: const StadiumBorder(side: BorderSide(color: AppColors.line)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(label, style: AppText.style(13, AppText.w800)),
-              const SizedBox(width: 6),
-              const Icon(
-                LucideIcons.chevronDown,
-                size: 16,
-                color: AppColors.ink,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _CalendarCard extends StatelessWidget {
   const _CalendarCard({
