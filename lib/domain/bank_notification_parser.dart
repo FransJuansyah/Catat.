@@ -146,7 +146,7 @@ final _inRe = RegExp(
 
 final _outRe = RegExp(
   r'\b(keluar|bayar|dibayar|pembayaran|membayar|transfer ke|kirim|dikirim|'
-  r'debit|tarik tunai|penarikan|pembelian|belanja|qris|payment|paid|sent|'
+  r'debit|debet|tarik tunai|penarikan|pembelian|belanja|qris|payment|paid|sent|'
   r'outgoing|purchase)\b',
   caseSensitive: false,
 );
@@ -178,7 +178,9 @@ final _counterpartyRe = RegExp(
   r"([A-Za-z0-9][A-Za-z0-9 &'.\-*]{1,40}?)"
   r'(?=\s*(?:[,.!:;]\s|[,.!:;]?$|\s(?:pakai|via|pake|dengan|sebesar|senilai|'
   r'berhasil|sukses|telah|sudah|udah|pada|tgl|tanggal|jam|using|with|on|'
-  r'was|is|has|ke|kepada|untuk|buat|rp|idr|saldo)\b))',
+  r'was|is|has|ke|kepada|untuk|buat|rp|idr|saldo)\b|'
+  // "Trf ke ANDI WIJAYA 26/09 10:00" (SMS bank): tanggal setelah nama.
+  r'\s\d{1,2}[/.\-]\d{1,2}\b))',
   caseSensitive: false,
 );
 
@@ -291,11 +293,46 @@ DetectedTransaction? parseBankNotification({
     return null; // tidak jelas, lebih baik tidak menebak
   }
 
+  final counterparty = _counterparty(all, direction, appName);
+  if (_isOwnTransfer(all, direction, counterparty)) return null;
+
   return DetectedTransaction(
     direction: direction,
     amount: amount,
     appName: appName,
     occurredAt: _transactionTime(all, postedAt),
-    counterparty: _counterparty(all, direction, appName),
+    counterparty: counterparty,
   );
+}
+
+// "Transfer ke GOPAY 0812…", "Trf ke OVO …": isi saldo e-wallet sendiri.
+// DANA hanya huruf kapital ("ke dana darurat" bukan e-wallet).
+final _toWalletRe = RegExp(
+  r'\b(?:ke|kepada|to)\s+(?:akun\s+|e-?wallet\s+)?'
+  r'(?:go-?pay|ovo|shopee ?pay|linkaja)\b',
+  caseSensitive: false,
+);
+final _toDanaRe = RegExp(r'\b(?:ke|kepada|to)\s+(?:akun\s+)?DANA\b');
+
+// Nama bank / e-wallet & kata rekening: kalau "dari X" isinya cuma ini,
+// uangnya dari rekening / dompet sendiri (bukan dari orang atau kantor).
+final _ownAccountWords = RegExp(
+  r"brimo|bank rakyat|\bbri\b|\bbca\b|mybca|klikbca|wondr|\bbni\b|livin'?|"
+  r'mandiri|\bbsi\b|\bbtn\b|cimb|octo|permata|danamon|\bocbc\b|maybank|'
+  r'\bbjb\b|\bjago\b|seabank|jenius|\bbtpn\b|\bblu\b|go-?pay|\bovo\b|'
+  r'shopee ?pay|linkaja|\bdana\b|virtual account|\bva\b|mobile|m-?banking|'
+  r'rekening|\bbank\b|[\s\-*.&]',
+  caseSensitive: false,
+);
+
+/// Pindah uang antar rekening / e-wallet sendiri (isi saldo GoPay dari BCA,
+/// tarik DANA ke BRI). Saldo total tidak berubah: bukan pengeluaran maupun
+/// pemasukan, dan sisi satunya sering ikut kirim notifikasi (dobel).
+/// Transfer ke / dari orang lain tetap dicatat.
+bool _isOwnTransfer(String all, MoneyDirection direction, String? from) {
+  if (direction == MoneyDirection.out) {
+    return _toWalletRe.hasMatch(all) || _toDanaRe.hasMatch(all);
+  }
+  if (from == null) return false;
+  return from.replaceAll(_ownAccountWords, '').isEmpty;
 }

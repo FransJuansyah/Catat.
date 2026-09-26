@@ -44,7 +44,9 @@ object AutoCapture {
     private const val MATCHED_KEEP_MS = 4L * 24 * 60 * 60 * 1000
     private const val MAX_QUEUE = 20
     private const val MAX_AGE_MS = 3L * 24 * 60 * 60 * 1000
-    private const val DEDUP_MS = 2L * 60 * 1000
+    /// Satu transaksi bisa dikirim lewat notif aplikasi + SMS + email bank yang
+    /// sama; SMS bisa telat beberapa menit.
+    private const val DEDUP_MS = 10L * 60 * 1000
     private const val TAG = "catat.auto"
 
     /// Sama dengan financeApps di Dart.
@@ -109,6 +111,14 @@ object AutoCapture {
 
     private fun bankIn(text: String): String? =
         BANKS.firstOrNull { it.first.containsMatchIn(text) }?.second
+
+    /// Nama aplikasi → nama bank ("BRImo" & SMS "BRI" = bank yang sama).
+    private fun family(app: String): String = when (app) {
+        "BRImo" -> "BRI"
+        "myBCA" -> "BCA"
+        "Livin'" -> "Mandiri"
+        else -> app
+    }
 
     /// "financeApp" / "sms" / "email", atau null = jangan dibaca (termasuk
     /// semua aplikasi chat seperti WhatsApp).
@@ -249,7 +259,7 @@ object AutoCapture {
         val amount = amountIn(all) ?: return
         createChannels(context)
 
-        if (seenRecently(context, pkg, amount, postedAt)) {
+        if (seenRecently(context, family(app), amount, postedAt)) {
             Log.i(TAG, "Notif dobel, dilewati")
             return
         }
@@ -271,8 +281,9 @@ object AutoCapture {
         }
     }
 
-    /// Notifikasi yang di-update / dikirim dobel (paket + nominal, 2 menit).
-    private fun seenRecently(context: Context, pkg: String, amount: Long, postedAt: Long): Boolean {
+    /// Notifikasi yang di-update / dikirim dobel: bank yang sama (lewat aplikasi,
+    /// SMS, atau email) + nominal sama dalam [DEDUP_MS].
+    private fun seenRecently(context: Context, bank: String, amount: Long, postedAt: Long): Boolean {
         val seen = try {
             JSONArray(prefs(context).getString(KEY_SEEN, "[]"))
         } catch (e: Exception) {
@@ -284,10 +295,10 @@ object AutoCapture {
             val o = seen.getJSONObject(i)
             val close = kotlin.math.abs(o.getLong("postedAt") - postedAt) < DEDUP_MS
             if (close) kept.put(o)
-            if (close && o.getString("pkg") == pkg && o.getLong("amount") == amount) dup = true
+            if (close && o.optString("bank") == bank && o.getLong("amount") == amount) dup = true
         }
         if (!dup) {
-            kept.put(JSONObject().put("pkg", pkg).put("amount", amount).put("postedAt", postedAt))
+            kept.put(JSONObject().put("bank", bank).put("amount", amount).put("postedAt", postedAt))
         }
         prefs(context).edit().putString(KEY_SEEN, kept.toString()).apply()
         return dup
