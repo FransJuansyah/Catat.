@@ -208,7 +208,12 @@ class ReportInsight {
 
 /// Bandingkan bulan ini dengan bulan lalu, cari yang paling menarik.
 ReportInsight? buildInsight(ReportData current, ReportData? previous) {
-  if (current.expenses.isEmpty) return null;
+  // Penyesuaian saldo bukan jajan: jangan jadi "terbesar" / "juara".
+  final spending = [
+    for (final e in current.expenses)
+      if (e.source != ExpenseSource.adjust) e,
+  ];
+  if (spending.isEmpty) return null;
   final prevMonth = monthLongName(
     current.range.start.subtract(const Duration(days: 1)),
   );
@@ -229,7 +234,7 @@ ReportInsight? buildInsight(ReportData current, ReportData? previous) {
     }
   }
   if (top != null) {
-    final favorite = _favoriteTitle(current.expenses, top.pocket.id);
+    final favorite = _favoriteTitle(spending, top.pocket.id);
     final pct = (topRise * 100).round();
     final noun = top.pocket.type == PocketType.keinginan
         ? 'Jajan'
@@ -251,9 +256,7 @@ ReportInsight? buildInsight(ReportData current, ReportData? previous) {
     }
   }
 
-  final biggest = current.expenses.reduce(
-    (a, b) => b.amount > a.amount ? b : a,
-  );
+  final biggest = spending.reduce((a, b) => b.amount > a.amount ? b : a);
   // Judul bawaan catat manual tanpa nama = "Pengeluaran"; jangan diulang.
   final label = [biggest.merchant, biggest.title]
       .map((s) => s?.trim() ?? '')

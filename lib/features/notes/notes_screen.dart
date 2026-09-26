@@ -7,7 +7,6 @@ import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/month_picker.dart';
 import '../../core/widgets/icon_badge.dart';
-import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
 import '../../domain/pay_period.dart';
@@ -138,7 +137,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                     entry: i,
                     onTap: i.auto
                         ? null
-                        : () => _confirmDeleteIncome(context, ref, i),
+                        : () => context.push('/pemasukan?edit=${i.id}'),
                   ),
                 for (final e in notes.items)
                   ExpenseTile(
@@ -416,22 +415,6 @@ class _EmptyDay extends StatelessWidget {
 
 const _incomeSoft = Color(0xFFE2F6EC);
 const _incomeText = Color(0xFF0B6B45);
-
-Future<void> _confirmDeleteIncome(
-  BuildContext context,
-  WidgetRef ref,
-  IncomeEntry income,
-) async {
-  final ok = await showConfirmSheet(
-    context,
-    title: 'Hapus pemasukan ini?',
-    message:
-        '${rupiah(income.amount)} dari "${income.title}" akan ditarik lagi dari kantong-kantongmu.',
-    confirmLabel: 'Hapus',
-    danger: true,
-  );
-  if (ok) await ref.read(budgetRepositoryProvider).deleteIncome(income.id);
-}
 
 /// Baris pemasukan di Catatan (layar 34). Pemasukan otomatis tidak bisa dihapus.
 class _IncomeTile extends StatelessWidget {

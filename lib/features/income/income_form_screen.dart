@@ -8,13 +8,14 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
+import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../data/providers.dart';
 import '../../domain/allocation.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
 
-/// Layar 30 · Tambah Pemasukan. Nominal langsung dibagi ke kantong.
+/// Layar 30 · Tambah / Ubah Pemasukan. Nominal langsung dibagi ke kantong.
 class IncomeFormScreen extends ConsumerStatefulWidget {
   const IncomeFormScreen({
     super.key,
@@ -22,9 +23,13 @@ class IncomeFormScreen extends ConsumerStatefulWidget {
     this.initialAmount,
     this.initialTitle,
     this.initialTime,
+    this.editId,
   });
 
   final DateTime? initialDate;
+
+  /// Ubah pemasukan yang sudah ada (ketuk di Catatan).
+  final String? editId;
 
   /// Isian awal dari notifikasi bank (catat otomatis).
   final int? initialAmount;
@@ -43,6 +48,8 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
   late DateTime _date;
   bool _saving = false;
 
+  bool get _isEdit => widget.editId != null;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +58,37 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
     );
     _amount = widget.initialAmount ?? 0;
     _title.text = widget.initialTitle ?? '';
+    if (_isEdit) _loadForEdit();
+  }
+
+  DateTime? _originalTime;
+
+  Future<void> _loadForEdit() async {
+    final detail = await ref
+        .read(budgetRepositoryProvider)
+        .loadIncome(widget.editId!);
+    if (detail == null || !mounted) return;
+    setState(() {
+      _amount = detail.entry.amount;
+      _title.text = detail.entry.title;
+      _date = dateOnly(detail.entry.occurredAt);
+      _originalTime = detail.entry.occurredAt;
+    });
+  }
+
+  Future<void> _delete() async {
+    final ok = await showConfirmSheet(
+      context,
+      title: 'Hapus pemasukan ini?',
+      message:
+          '${rupiah(_amount)} dari "${_title.text.trim()}" akan ditarik lagi '
+          'dari kantong-kantongmu.',
+      confirmLabel: 'Hapus',
+      danger: true,
+    );
+    if (!ok) return;
+    await ref.read(budgetRepositoryProvider).deleteIncome(widget.editId!);
+    if (mounted) context.pop();
   }
 
   @override
@@ -77,7 +115,7 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
   Future<void> _save() async {
     if (_amount <= 0) return;
     final now = ref.read(clockProvider)();
-    final original = widget.initialTime;
+    final original = _originalTime ?? widget.initialTime;
     final when = original != null && _date == dateOnly(original)
         ? original
         : _date == dateOnly(now)
@@ -86,9 +124,22 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
     final title = _title.text.trim().isEmpty ? 'Pemasukan' : _title.text.trim();
     setState(() => _saving = true);
     try {
-      final id = await ref
-          .read(budgetRepositoryProvider)
-          .addIncome(amount: _amount, title: title, occurredAt: when);
+      final repo = ref.read(budgetRepositoryProvider);
+      if (_isEdit) {
+        await repo.updateIncome(
+          widget.editId!,
+          amount: _amount,
+          title: title,
+          occurredAt: when,
+        );
+        if (mounted) context.pop();
+        return;
+      }
+      final id = await repo.addIncome(
+        amount: _amount,
+        title: title,
+        occurredAt: when,
+      );
       if (mounted) context.pushReplacement('/pemasukan-masuk/$id');
     } on StateError {
       if (!mounted) return;
@@ -123,7 +174,12 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
                 ),
                 child: Column(
                   children: [
-                    const AppTopBar(title: 'Tambah Pemasukan', close: true),
+                    AppTopBar(
+                      title: _isEdit ? 'Ubah Pemasukan' : 'Tambah Pemasukan',
+                      close: true,
+                      trailingIcon: _isEdit ? LucideIcons.trash2 : null,
+                      onTrailing: _isEdit ? _delete : null,
+                    ),
                     const SizedBox(height: 20),
                     Text(
                       'Duit masuk',
@@ -258,7 +314,7 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
                     ),
                     const SizedBox(height: 14),
                     AppButton(
-                      label: 'Masukin & bagi',
+                      label: _isEdit ? 'Simpan' : 'Masukin & bagi',
                       loading: _saving,
                       onPressed: _amount > 0 && pockets.isNotEmpty
                           ? _save

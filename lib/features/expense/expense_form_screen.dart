@@ -8,6 +8,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
+import '../../core/widgets/pocket_chip.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
@@ -239,7 +240,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                         for (final (i, p) in pockets.indexed) ...[
                           if (i > 0) const SizedBox(width: 8),
                           Expanded(
-                            child: _PocketChip(
+                            child: PocketChip(
                               pocket: p,
                               selected: p.id == _pocketId,
                               onTap: () {
@@ -355,61 +356,6 @@ class _DateChip extends StatelessWidget {
                 Text(label, style: AppText.style(13, AppText.w700)),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PocketChip extends StatelessWidget {
-  const _PocketChip({
-    required this.pocket,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final PocketView pocket;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(pocket.color);
-    return Material(
-      color: selected ? color : AppColors.card,
-      shape: StadiumBorder(
-        side: selected
-            ? BorderSide.none
-            : const BorderSide(color: AppColors.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                PocketVisuals.icon(pocket.iconKey),
-                size: 16,
-                color: selected ? Colors.white : color,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  pocket.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.style(
-                    13,
-                    AppText.w800,
-                    color: selected ? Colors.white : AppColors.ink,
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),

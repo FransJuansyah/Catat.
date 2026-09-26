@@ -13,6 +13,7 @@ import 'data/providers.dart';
 import 'data/receipt_scanner.dart';
 import 'domain/types.dart';
 import 'features/account/account_screen.dart';
+import 'features/balance/adjust_balance_screen.dart';
 import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
 import 'features/expense/saved_screen.dart';
@@ -68,6 +69,7 @@ final _router = GoRouter(
           initialAmount: int.tryParse(q['amount'] ?? ''),
           initialTitle: q['title'],
           initialTime: DateTime.tryParse(q['time'] ?? ''),
+          editId: q['edit'],
         );
       },
     ),
@@ -205,6 +207,10 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(path: '/privasi', builder: (_, _) => const PrivacyScreen()),
+    GoRoute(
+      path: '/sesuaikan-saldo',
+      builder: (_, _) => const AdjustBalanceScreen(),
+    ),
   ],
 );
 

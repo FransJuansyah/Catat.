@@ -73,6 +73,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             children: [
               if (home != null) _incomeRow(context, home),
               _Row(
+                icon: LucideIcons.scale,
+                title: 'Sesuaikan saldo',
+                subtitle: 'Samain sama uang aslimu',
+                onTap: () => context.push('/sesuaikan-saldo'),
+              ),
+              _Row(
                 icon: LucideIcons.chartPie,
                 title: 'Atur ${home?.pockets.length ?? 3} kantong',
                 subtitle: home == null ? null : _pocketSplit(home),

@@ -10,13 +10,17 @@ enum ExpenseSource {
   scan,
 
   /// Dari notifikasi bank / e-wallet (catat otomatis), dikonfirmasi user.
-  notif;
+  notif,
+
+  /// Penyesuaian saldo supaya sama dengan uang asli (bukan jajan).
+  adjust;
 
   /// "Sumber" di detail transaksi & export.
   String get label => switch (this) {
     ExpenseSource.manual => 'Catat manual',
     ExpenseSource.scan => 'Scan struk',
     ExpenseSource.notif => 'Notifikasi bank',
+    ExpenseSource.adjust => 'Penyesuaian saldo',
   };
 
   /// Keterangan kecil di daftar catatan ("dari scan"); manual tidak ditandai.
@@ -24,6 +28,7 @@ enum ExpenseSource {
     ExpenseSource.manual => null,
     ExpenseSource.scan => 'dari scan',
     ExpenseSource.notif => 'dari notif',
+    ExpenseSource.adjust => 'penyesuaian',
   };
 }
 

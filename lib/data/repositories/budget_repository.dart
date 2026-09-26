@@ -481,6 +481,104 @@ class BudgetRepository {
   }
 
   /// Pemasukan & pembagiannya, `null` jika tidak ada (layar 31).
+  /// Ubah pemasukan (nominal, judul, tanggal). Pembagian ke kantong dihitung
+  /// ulang dengan aturan kantong sekarang, seperti saat ditambah.
+  Future<void> updateIncome(
+    String id, {
+    required int amount,
+    required String title,
+    required DateTime occurredAt,
+  }) {
+    if (amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'harus lebih dari 0');
+    }
+    return _db.transaction(() async {
+      final now = _now();
+      final period = await _periodFor(occurredAt);
+      await (_db.update(_db.incomes)..where((t) => t.id.equals(id))).write(
+        IncomesCompanion(
+          periodId: Value(period.id),
+          amount: Value(amount),
+          title: Value(title),
+          occurredAt: Value(occurredAt),
+          updatedAt: Value(now),
+        ),
+      );
+      // Satu baris per (pemasukan, kantong) → perbarui yang ada; kantong yang
+      // sudah dihapus user dibuang dari pembagian.
+      final existing = {
+        for (final a in await (_db.select(
+          _db.incomeAllocations,
+        )..where((t) => t.incomeId.equals(id))).get())
+          a.pocketId: a,
+      };
+      final pockets = await _activePockets();
+      final parts = splitIncome(amount, pockets.map(_ruleOf).toList());
+      final active = {for (final p in pockets) p.id};
+      for (final p in pockets) {
+        final row = existing[p.id];
+        if (row == null) {
+          await _db
+              .into(_db.incomeAllocations)
+              .insert(
+                IncomeAllocationsCompanion.insert(
+                  id: _newId(),
+                  incomeId: id,
+                  pocketId: p.id,
+                  amount: parts[p.id] ?? 0,
+                ),
+              );
+        } else {
+          await (_db.update(
+            _db.incomeAllocations,
+          )..where((t) => t.id.equals(row.id))).write(
+            IncomeAllocationsCompanion(
+              amount: Value(parts[p.id] ?? 0),
+              deletedAt: const Value(null),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+      }
+      for (final row in existing.values) {
+        if (active.contains(row.pocketId)) continue;
+        await (_db.update(
+          _db.incomeAllocations,
+        )..where((t) => t.id.equals(row.id))).write(
+          IncomeAllocationsCompanion(
+            deletedAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+    });
+  }
+
+  /// Samakan saldo dengan uang asli user (layar Sesuaikan saldo).
+  /// Selisih kurang → pengeluaran "Penyesuaian saldo" dari [pocketId];
+  /// selisih lebih → pemasukan "Penyesuaian saldo" yang dibagi ke kantong.
+  /// Mengembalikan selisihnya (0 = sudah sama, tidak dicatat apa-apa).
+  Future<int> adjustBalance({
+    required int actual,
+    required String pocketId,
+  }) async {
+    if (actual < 0) throw ArgumentError.value(actual, 'actual');
+    final diff = actual - (await loadHome()).remaining;
+    if (diff < 0) {
+      await addExpense(
+        pocketId: pocketId,
+        amount: -diff,
+        title: adjustmentTitle,
+        source: ExpenseSource.adjust,
+      );
+    } else if (diff > 0) {
+      await addIncome(amount: diff, title: adjustmentTitle);
+    }
+    return diff;
+  }
+
+  static const adjustmentTitle = 'Penyesuaian saldo';
+
   Future<IncomeDetail?> loadIncome(String id) async {
     final row = await (_db.select(
       _db.incomes,
@@ -626,7 +724,10 @@ class BudgetRepository {
               ..addColumns([t.id])
               ..where(
                 t.deletedAt.isNull() &
-                    t.source.equalsValue(ExpenseSource.notif).not() &
+                    t.source.isNotInValues([
+                      ExpenseSource.notif,
+                      ExpenseSource.adjust,
+                    ]) &
                     t.amount.equals(amount) &
                     t.occurredAt.isBetweenValues(from, to),
               ))
