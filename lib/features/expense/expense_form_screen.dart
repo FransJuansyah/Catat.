@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../data/providers.dart';
@@ -29,8 +30,6 @@ class ExpenseFormScreen extends ConsumerStatefulWidget {
 }
 
 class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
-  static const _maxAmount = 99999999999; // 11 digit
-
   final _title = TextEditingController();
   int _amount = 0;
   late DateTime _date;
@@ -73,17 +72,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
   void _press(String key) {
     _hideKeyboard();
-    setState(() {
-      switch (key) {
-        case 'del':
-          _amount ~/= 10;
-        case '000':
-          if (_amount > 0 && _amount * 1000 <= _maxAmount) _amount *= 1000;
-        default:
-          final next = _amount * 10 + int.parse(key);
-          if (next <= _maxAmount) _amount = next;
-      }
-    });
+    setState(() => _amount = applyAmountKey(_amount, key));
   }
 
   Future<void> _pickDate() async {
@@ -233,7 +222,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                     ),
                     const Spacer(),
                     const SizedBox(height: 16),
-                    _Keypad(
+                    AmountKeypad(
                       onKey: _press,
                       onClear: () => setState(() => _amount = 0),
                     ),
@@ -393,64 +382,6 @@ class _PocketChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Keypad extends StatelessWidget {
-  const _Keypad({required this.onKey, required this.onClear});
-
-  final ValueChanged<String> onKey;
-  final VoidCallback onClear;
-
-  static const _rows = [
-    ['1', '2', '3'],
-    ['4', '5', '6'],
-    ['7', '8', '9'],
-    ['000', '0', 'del'],
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (final (r, row) in _rows.indexed) ...[
-          if (r > 0) const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final (c, key) in row.indexed) ...[
-                if (c > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: Material(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(AppRadius.input),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => onKey(key),
-                      onLongPress: key == 'del' ? onClear : null,
-                      child: SizedBox(
-                        height: 54,
-                        child: Center(
-                          child: key == 'del'
-                              ? const Icon(
-                                  LucideIcons.delete,
-                                  size: 22,
-                                  color: AppColors.ink,
-                                )
-                              : Text(
-                                  key,
-                                  style: AppText.style(22, AppText.w700),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ],
     );
   }
 }

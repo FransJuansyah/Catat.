@@ -31,6 +31,29 @@ class PayPeriod {
     return PayPeriod(start, DateTime(next.year, next.month, next.day - 1));
   }
 
+  /// Minggu yang dimulai pada [weekday] (1 = Senin … 7 = Minggu) terakhir
+  /// sebelum/tepat [date].
+  factory PayPeriod.weekly(DateTime date, int weekday) {
+    assert(weekday >= 1 && weekday <= 7, 'weekday harus 1–7');
+    final d = dateOnly(date);
+    final back = (d.weekday - weekday + 7) % 7;
+    final start = DateTime(d.year, d.month, d.day - back);
+    return PayPeriod(start, DateTime(start.year, start.month, start.day + 6));
+  }
+
+  /// Satu hari penuh.
+  factory PayPeriod.daily(DateTime date) {
+    final d = dateOnly(date);
+    return PayPeriod(d, d);
+  }
+
+  /// Bulan kalender (tgl 1 s.d. akhir bulan) — wadah laporan untuk
+  /// penghasilan tidak tetap.
+  factory PayPeriod.calendarMonth(DateTime date) => PayPeriod(
+    DateTime(date.year, date.month),
+    DateTime(date.year, date.month + 1, 0),
+  );
+
   /// Hari pertama (inklusif), jam 00:00 waktu lokal.
   final DateTime start;
 

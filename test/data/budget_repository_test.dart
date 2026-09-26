@@ -1,6 +1,8 @@
 import 'package:catat/data/local/database.dart';
 import 'package:catat/data/repositories/budget_repository.dart';
-import 'package:catat/data/seed/demo_seed.dart';
+
+import '../fixtures/demo_seed.dart';
+
 import 'package:catat/domain/templates.dart';
 import 'package:catat/domain/types.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;

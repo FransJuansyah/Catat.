@@ -199,7 +199,7 @@ class _Tip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(detail.pocket.color);
     final b = detail.pocket.balance;
-    final payday = _paydayPhrase(detail.daysToPayday);
+    final days = detail.daysToPayday;
     final String text;
     if (b.remaining < 0) {
       text =
@@ -208,10 +208,13 @@ class _Tip extends StatelessWidget {
       final pct = b.available == 0
           ? 0
           : (b.remaining * 100 / b.available).round();
-      text = 'Tinggal $pct% lagi, $payday. Rem dulu ya!';
+      text = days == null
+          ? 'Tinggal $pct% lagi di kantong ini. Rem dulu ya!'
+          : 'Tinggal $pct% lagi, ${_paydayPhrase(days)}. Rem dulu ya!';
     } else {
-      text =
-          '${_capitalize(payday)} & masih sisa ${rupiahShort(b.remaining)}. Aman, pertahankan!';
+      text = days == null
+          ? 'Masih sisa ${rupiahShort(b.remaining)} di kantong ini. Aman, pertahankan!'
+          : '${_capitalize(_paydayPhrase(days))} & masih sisa ${rupiahShort(b.remaining)}. Aman, pertahankan!';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

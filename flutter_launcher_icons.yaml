@@ -1,0 +1,12 @@
+# Ikon aplikasi dari design/brand (desain Figma "Aset Aplikasi", Ikon A).
+# Jalankan ulang setelah aset berubah: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "design/brand/android/app-icon.png"
+  adaptive_icon_background: "#0E0E10"
+  adaptive_icon_foreground: "design/brand/android/adaptive-foreground.png"
+  adaptive_icon_foreground_inset: 0
+  adaptive_icon_monochrome: "design/brand/android/adaptive-monochrome.png"
+  remove_alpha_ios: true
+  background_color_ios: "#0E0E10"

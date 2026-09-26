@@ -9,13 +9,33 @@ import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_card.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
+import '../../domain/types.dart';
 
 /// Layar 03 · Beranda — design/screens/03 · Beranda.png
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _paydayShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Periode gaji baru → tampilkan "Gajian masuk!" sekali.
+    ref.listenManual(paydayProvider, (_, next) {
+      final info = next.value;
+      if (info == null || info.celebrated || _paydayShown || !mounted) return;
+      _paydayShown = true;
+      context.push('/gajian-masuk');
+    }, fireImmediately: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final summary = ref.watch(homeSummaryProvider);
     return SafeArea(
       bottom: false,
@@ -40,6 +60,7 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final irregular = summary.mode == IncomeMode.irregular;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpace.screenX,
@@ -48,11 +69,17 @@ class _HomeContent extends StatelessWidget {
         24,
       ),
       children: [
-        _Header(name: summary.userName, daysToPayday: summary.daysToPayday),
+        _Header(name: summary.userName, hint: summary.hint),
         const SizedBox(height: AppSpace.section),
-        _BalanceHero(summary: summary),
+        if (irregular)
+          _RunningHero(summary: summary)
+        else
+          _BalanceHero(summary: summary),
         const SizedBox(height: AppSpace.section),
-        _ScanBanner(onTap: () => context.push('/scan')),
+        if (irregular)
+          const _QuickActions()
+        else
+          _ScanBanner(onTap: () => context.push('/scan')),
         const SizedBox(height: AppSpace.section),
         Row(
           children: [
@@ -84,17 +111,11 @@ class _HomeContent extends StatelessWidget {
   }
 }
 
-String paydayHint(int days) => switch (days) {
-  0 => 'Hari ini gajian, asik!',
-  1 => 'Gajian besok, tahan dulu ya',
-  _ => 'Gajian $days hari lagi',
-};
-
 class _Header extends StatelessWidget {
-  const _Header({required this.name, required this.daysToPayday});
+  const _Header({required this.name, required this.hint});
 
   final String name;
-  final int daysToPayday;
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
@@ -108,10 +129,12 @@ class _Header extends StatelessWidget {
             color: AppColors.lime,
             shape: BoxShape.circle,
           ),
-          child: Text(
-            name.isEmpty ? '?' : name[0].toUpperCase(),
-            style: AppText.style(18, AppText.w800),
-          ),
+          child: name.isEmpty
+              ? const Icon(LucideIcons.user, size: 20, color: AppColors.ink)
+              : Text(
+                  name[0].toUpperCase(),
+                  style: AppText.style(18, AppText.w800),
+                ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -119,12 +142,14 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hai, $name',
+                name.isEmpty ? 'Hai!' : 'Hai, $name',
                 style: AppText.style(18, AppText.w800, spacingPercent: -1),
               ),
               const SizedBox(height: 1),
               Text(
-                paydayHint(daysToPayday),
+                hint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppText.style(13, AppText.w500, color: AppColors.muted),
               ),
             ],
@@ -140,6 +165,7 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Kartu saldo gaji & uang jajan (layar 03, 33).
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({required this.summary});
 
@@ -148,6 +174,225 @@ class _BalanceHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onTrack = summary.onTrack;
+    final allowance = summary.mode == IncomeMode.allowance;
+    return _DarkCard(
+      children: [
+        Text(
+          allowance
+              ? 'Sisa jajan ${summary.periodNoun}'
+              : 'Sisa duitmu ${summary.periodNoun}',
+          style: AppText.style(14, AppText.w500, color: AppColors.faint),
+        ),
+        const SizedBox(height: 4),
+        _BigAmount(rupiah(summary.remaining)),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                allowance
+                    ? 'dari ${rupiah(summary.salary)} / ${summary.perNoun}'
+                    : 'dari gaji ${rupiah(summary.salary)}',
+                style: AppText.style(13, AppText.w500, color: AppColors.faint),
+              ),
+            ),
+            _Pill(
+              icon: onTrack ? LucideIcons.check : LucideIcons.triangleAlert,
+              label: onTrack ? 'On track' : 'Rem dulu',
+              bg: onTrack ? AppColors.lime : const Color(0xFFFFE8EE),
+              fg: onTrack ? AppColors.ink : const Color(0xFFB3264F),
+            ),
+          ],
+        ),
+        if (summary.dailySafe != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.darkSurface,
+              borderRadius: BorderRadius.circular(AppRadius.segment),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  LucideIcons.sparkles,
+                  size: 14,
+                  color: AppColors.lime,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Aman jajan ±${rupiahShort(summary.dailySafe!)}/hari sampai ${summary.dailySafeUntil}',
+                    style: AppText.style(12, AppText.w700, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Kartu saldo berjalan penghasilan tidak tetap (layar 32).
+class _RunningHero extends StatelessWidget {
+  const _RunningHero({required this.summary});
+
+  final HomeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DarkCard(
+      children: [
+        Text(
+          'Saldo kamu sekarang',
+          style: AppText.style(14, AppText.w500, color: AppColors.faint),
+        ),
+        const SizedBox(height: 4),
+        _BigAmount(rupiah(summary.remaining)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Masuk bulan ini',
+                    style: AppText.style(
+                      12,
+                      AppText.w500,
+                      color: AppColors.faint,
+                    ),
+                  ),
+                  Text(
+                    '+${rupiah(summary.monthIncome)}',
+                    style: AppText.style(
+                      14,
+                      AppText.w800,
+                      color: AppColors.lime,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => context.push('/pemasukan'),
+              child: const _Pill(
+                icon: LucideIcons.plus,
+                label: 'Pemasukan',
+                bg: AppColors.lime,
+                fg: AppColors.ink,
+                large: true,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Dua tombol cepat: Scan struk & Tambah pemasukan (layar 32).
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tile({
+      required IconData icon,
+      required String title,
+      required String sub,
+      required Color bg,
+      required Color badgeBg,
+      required Color iconColor,
+      required Color titleColor,
+      required Color subColor,
+      required String route,
+    }) {
+      return Expanded(
+        child: Material(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadius.cardLg),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push(route),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.cardPad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconBadge(
+                    icon: icon,
+                    background: badgeBg,
+                    color: iconColor,
+                    size: 40,
+                    iconSize: 20,
+                  ),
+                  const SizedBox(height: 10),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      style: AppText.style(15, AppText.w800, color: titleColor),
+                    ),
+                  ),
+                  Text(
+                    sub,
+                    style: AppText.style(12, AppText.w500, color: subColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Tinggi kedua tile selalu sama walau teksnya beda panjang.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          tile(
+            icon: LucideIcons.scanLine,
+            title: 'Scan struk',
+            sub: 'Catat pengeluaran',
+            bg: AppColors.lime,
+            badgeBg: AppColors.ink,
+            iconColor: AppColors.lime,
+            titleColor: AppColors.ink,
+            subColor: AppColors.limeText,
+            route: '/scan',
+          ),
+          const SizedBox(width: 10),
+          tile(
+            icon: LucideIcons.circlePlus,
+            title: 'Tambah pemasukan',
+            sub: 'Baru dapat duit?',
+            bg: AppColors.ink,
+            badgeBg: AppColors.darkSurface,
+            iconColor: AppColors.lime,
+            titleColor: Colors.white,
+            subColor: AppColors.faint,
+            route: '/pemasukan',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DarkCard extends StatelessWidget {
+  const _DarkCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -156,71 +401,67 @@ class _BalanceHero extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _BigAmount extends StatelessWidget {
+  const _BigAmount(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: AppText.style(
+          38,
+          AppText.w800,
+          color: Colors.white,
+          spacingPercent: -3,
+        ),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({
+    required this.icon,
+    required this.label,
+    required this.bg,
+    required this.fg,
+    this.large = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color bg;
+  final Color fg;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: large ? 12 : 10,
+        vertical: large ? 8 : 6,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Sisa duitmu bulan ini',
-            style: AppText.style(14, AppText.w500, color: AppColors.faint),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              rupiah(summary.remaining),
-              style: AppText.style(
-                38,
-                AppText.w800,
-                color: Colors.white,
-                spacingPercent: -3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'dari gaji ${rupiah(summary.salary)}',
-                  style: AppText.style(
-                    13,
-                    AppText.w500,
-                    color: AppColors.faint,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: onTrack ? AppColors.lime : const Color(0xFFFFE8EE),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      onTrack ? LucideIcons.check : LucideIcons.triangleAlert,
-                      size: 14,
-                      color: onTrack ? AppColors.ink : const Color(0xFFB3264F),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      onTrack ? 'On track' : 'Rem dulu',
-                      style: AppText.style(
-                        12,
-                        AppText.w800,
-                        color: onTrack
-                            ? AppColors.ink
-                            : const Color(0xFFB3264F),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 4),
+          Text(label, style: AppText.style(12, AppText.w800, color: fg)),
         ],
       ),
     );

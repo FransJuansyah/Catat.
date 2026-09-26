@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
 import '../../domain/pay_period.dart';
@@ -146,9 +147,22 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   style: AppText.style(17, AppText.w800, spacingPercent: -1),
                 ),
               ),
-              if (notes != null)
+              if (notes != null && notes.incomeTotal > 0) ...[
                 Text(
-                  notes.total == 0 ? rupiah(0) : rupiahOut(notes.total),
+                  '+${rupiahShort(notes.incomeTotal).substring(3)}',
+                  style: AppText.style(
+                    14,
+                    AppText.w800,
+                    color: AppColors.success,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (notes != null && (notes.incomeTotal == 0 || notes.total > 0))
+                Text(
+                  notes.incomeTotal > 0
+                      ? '-${rupiahShort(notes.total).substring(3)}'
+                      : (notes.total == 0 ? rupiah(0) : rupiahOut(notes.total)),
                   style: AppText.style(
                     14,
                     AppText.w800,
@@ -160,7 +174,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           const SizedBox(height: 10),
           if (notes == null)
             const SizedBox(height: 120)
-          else if (notes.items.isEmpty)
+          else if (notes.isEmpty)
             _EmptyDay(
               isToday: _selected == today,
               onAdd: () => context.push('/catat?date=${_isoDate(_selected)}'),
@@ -168,6 +182,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           else
             ListCard(
               children: [
+                for (final i in notes.incomes)
+                  _IncomeTile(
+                    entry: i,
+                    onTap: i.auto
+                        ? null
+                        : () => _confirmDeleteIncome(context, ref, i),
+                  ),
                 for (final e in notes.items)
                   ExpenseTile(
                     entry: e,
@@ -285,6 +306,10 @@ class _CalendarCard extends StatelessWidget {
               ],
             ),
           ],
+          if (data?.incomeDays.isNotEmpty ?? false) ...[
+            const SizedBox(height: 10),
+            const _Legend(),
+          ],
         ],
       ),
     );
@@ -296,6 +321,7 @@ class _CalendarCard extends StatelessWidget {
     final isSelected = date == selected;
     final isFuture = date.isAfter(today);
     final isPayday = data?.paydayDay == day;
+    final isIncome = !isFuture && (data?.incomeDays.contains(day) ?? false);
     final dots = isFuture ? const <int>[] : (data?.dots[day] ?? const <int>[]);
 
     final Color bg;
@@ -304,6 +330,8 @@ class _CalendarCard extends StatelessWidget {
       (bg, fg) = (AppColors.ink, Colors.white);
     } else if (isPayday) {
       (bg, fg) = (AppColors.lime, AppColors.ink);
+    } else if (isIncome) {
+      (bg, fg) = (_incomeSoft, _incomeText);
     } else {
       (bg, fg) = (
         Colors.transparent,
@@ -465,6 +493,140 @@ class _EmptyDay extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _incomeSoft = Color(0xFFE2F6EC);
+const _incomeText = Color(0xFF0B6B45);
+
+Future<void> _confirmDeleteIncome(
+  BuildContext context,
+  WidgetRef ref,
+  IncomeEntry income,
+) async {
+  final ok = await showConfirmSheet(
+    context,
+    title: 'Hapus pemasukan ini?',
+    message:
+        '${rupiah(income.amount)} dari "${income.title}" akan ditarik lagi dari kantong-kantongmu.',
+    confirmLabel: 'Hapus',
+    danger: true,
+  );
+  if (ok) await ref.read(budgetRepositoryProvider).deleteIncome(income.id);
+}
+
+/// Baris pemasukan di Catatan (layar 34). Pemasukan otomatis tidak bisa dihapus.
+class _IncomeTile extends StatelessWidget {
+  const _IncomeTile({required this.entry, this.onTap});
+
+  final IncomeEntry entry;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            const IconBadge(
+              icon: LucideIcons.circlePlus,
+              background: _incomeSoft,
+              color: AppColors.success,
+              size: 40,
+              iconSize: 18,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.style(15, AppText.w800),
+                  ),
+                  const SizedBox(height: 3),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Pemasukan',
+                          style: AppText.style(
+                            12,
+                            AppText.w700,
+                            color: AppColors.success,
+                          ),
+                        ),
+                        TextSpan(
+                          text: entry.auto
+                              ? ' \u00b7 otomatis'
+                              : ' \u00b7 ${clock(entry.occurredAt)}',
+                          style: AppText.style(
+                            12,
+                            AppText.w500,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '+${rupiah(entry.amount)}',
+              style: AppText.style(15, AppText.w800, color: AppColors.success),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  const _Legend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: _incomeSoft,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Ada pemasukan',
+            style: AppText.style(11, AppText.w700, color: AppColors.muted),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: AppColors.muted,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Pengeluaran per kantong',
+            style: AppText.style(11, AppText.w700, color: AppColors.muted),
           ),
         ],
       ),

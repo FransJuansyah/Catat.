@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 
-enum AppButtonStyle { primary, secondary, danger }
+/// lime = tombol utama di atas latar gelap (layar 18, 31).
+enum AppButtonStyle { primary, secondary, danger, lime }
 
 /// Tombol besar full-width (tinggi 56, radius 18). `onPressed: null` = disabled.
 class AppButton extends StatelessWidget {
@@ -32,6 +33,7 @@ class AppButton extends StatelessWidget {
         AppColors.ink,
         AppColors.line,
       ),
+      (AppButtonStyle.lime, _) => (AppColors.lime, AppColors.ink, null),
       (AppButtonStyle.danger, _) => (
         AppColors.card,
         AppColors.danger,

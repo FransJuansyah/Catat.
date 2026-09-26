@@ -57,6 +57,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.0
   build_runner: ^2.16.1
+  flutter_launcher_icons: 0.14.0
+  flutter_native_splash: 2.4.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -68,6 +70,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Font dibundel supaya tampil benar walau offline (tidak diunduh saat runtime).
+  assets:
+    - google_fonts/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

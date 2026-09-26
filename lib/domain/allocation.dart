@@ -54,6 +54,34 @@ Map<String, int> allocateAll(int salary, List<PocketRule> rules) {
   return result;
 }
 
+/// Bagi satu pemasukan tambahan ke kantong (layar 30). Rentang min–maks
+/// tidak berlaku (itu untuk jatah per periode). Kantong mode nominal dibagi
+/// sebanding nominalnya. Total hasil selalu = [amount].
+Map<String, int> splitIncome(int amount, List<PocketRule> rules) {
+  if (rules.isEmpty) return {};
+  final weights = {
+    for (final r in rules)
+      r.pocketId: r.mode == AllocationMode.percent ? r.percent : r.nominal,
+  };
+  final total = weights.values.fold<int>(0, (s, w) => s + w);
+  if (total <= 0) {
+    return {
+      for (final (i, r) in rules.indexed) r.pocketId: i == 0 ? amount : 0,
+    };
+  }
+  final result = {
+    for (final e in weights.entries) e.key: amount * e.value ~/ total,
+  };
+  final diff = amount - result.values.fold<int>(0, (s, v) => s + v);
+  if (diff != 0) {
+    final biggest = weights.entries
+        .reduce((a, b) => b.value > a.value ? b : a)
+        .key;
+    result[biggest] = result[biggest]! + diff;
+  }
+  return result;
+}
+
 /// Hasil validasi alokasi (layar 20 & 23).
 class AllocationCheck {
   const AllocationCheck({
