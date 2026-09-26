@@ -254,8 +254,18 @@ ReportInsight? buildInsight(ReportData current, ReportData? previous) {
   final biggest = current.expenses.reduce(
     (a, b) => b.amount > a.amount ? b : a,
   );
+  // Judul bawaan catat manual tanpa nama = "Pengeluaran"; jangan diulang.
+  final label = [biggest.merchant, biggest.title]
+      .map((s) => s?.trim() ?? '')
+      .firstWhere(
+        (s) => s.isNotEmpty && s.toLowerCase() != 'pengeluaran',
+        orElse: () => '',
+      );
   return ReportInsight(
-    'Pengeluaran terbesar: ${biggest.title} di kantong ${biggest.pocket.name}.',
+    label.isEmpty
+        ? 'Pengeluaran terbesar bulan ini ada di kantong '
+              '${biggest.pocket.name}.'
+        : 'Pengeluaran terbesar: $label di kantong ${biggest.pocket.name}.',
     pocket: biggest.pocket,
   );
 }

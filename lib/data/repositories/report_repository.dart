@@ -191,6 +191,23 @@ class ReportRepository {
         budget[a.pocketId] = (budget[a.pocketId] ?? 0) + a.amount;
       }
     }
+    // Pindah saldo, aturannya sama dengan saldo di Beranda: keluar dihitung
+    // di periode asal, masuk di periode tujuan (sisa yang pindah ke periode
+    // baru).
+    if (periods.isNotEmpty) {
+      final periodIds = {for (final p in periods) p.id};
+      final transfers = await (_db.select(
+        _db.transfers,
+      )..where((t) => t.deletedAt.isNull())).get();
+      for (final t in transfers) {
+        if (periodIds.contains(t.periodId)) {
+          budget[t.fromPocketId] = (budget[t.fromPocketId] ?? 0) - t.amount;
+        }
+        if (periodIds.contains(t.toPeriodId ?? t.periodId)) {
+          budget[t.toPocketId] = (budget[t.toPocketId] ?? 0) + t.amount;
+        }
+      }
+    }
     final spent = <String, int>{};
     for (final e in expenses) {
       spent[e.pocket.id] = (spent[e.pocket.id] ?? 0) + e.amount;
