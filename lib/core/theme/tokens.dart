@@ -98,6 +98,7 @@ abstract final class PocketVisuals {
     'car': LucideIcons.car,
     'phone': LucideIcons.smartphone,
     'film': LucideIcons.film,
+    'piggy': LucideIcons.piggyBank,
   };
 
   /// Teks gelap di atas latar lembut warna kantong (mis. kartu tips).

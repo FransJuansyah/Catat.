@@ -1,0 +1,9 @@
+# Splash bawaan OS (sebelum Flutter siap). Warnanya sama dengan layar 00 · Splash
+# supaya transisinya mulus. Jalankan ulang: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#0E0E10"
+  image: design/brand/android/splash-logo.png
+  android_12:
+    color: "#0E0E10"
+    image: design/brand/android/splash-android12.png
+  web: false
