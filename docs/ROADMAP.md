@@ -90,12 +90,12 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 - [ ] Keystore upload sendiri; **backup di 2 tempat aman** (hilang = tidak bisa update app)
 - [ ] `applicationId` final (saat ini `id.catat.catat`, ganti sebelum rilis pertama; tidak bisa diubah setelahnya)
 - [ ] Ikon adaptif, nama app, screenshot store, deskripsi, feature graphic
-- [ ] **Kebijakan privasi** (bisa di-host gratis, mis. GitHub Pages), menjelaskan kamera, foto struk, data keuangan
-- [ ] Form **Data Safety**: data apa dikumpulkan, dienkripsi saat transit, user bisa minta hapus
+- [ ] **Kebijakan privasi** (bisa di-host gratis, mis. GitHub Pages), menjelaskan kamera, foto struk, data keuangan → draf: [kebijakan-privasi.md](kebijakan-privasi.md) (isi nama, email, tanggal)
+- [ ] Form **Data Safety**: data apa dikumpulkan, dienkripsi saat transit, user bisa minta hapus → contekan: [play-store-data-safety.md](play-store-data-safety.md)
 - [ ] Fitur **hapus akun & data** dari dalam app (wajib Play Store)
-- [ ] Target API level sesuai syarat Google terbaru
+- [x] Target API level sesuai syarat Google terbaru (targetSdk 36, minSdk 24)
 - [ ] Akun developer pribadi baru: **uji tertutup** dengan sejumlah penguji selama periode tertentu sebelum rilis produksi (cek syarat terbaru di Play Console)
-- [ ] Build: `flutter build appbundle --release`
+- [x] Build: `flutter build appbundle --release` (jalan, tanpa crash di HP; signing dari `android/key.properties`)
 
 ---
 
