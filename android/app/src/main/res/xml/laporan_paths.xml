@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Laporan di Android 9 ke bawah: folder Download milik aplikasi. -->
+<paths>
+    <external-files-path name="laporan" path="Download/" />
+</paths>

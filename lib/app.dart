@@ -29,7 +29,12 @@ import 'features/pocket/pocket_settings_screen.dart';
 import 'features/pocket/transfer_screen.dart';
 import 'features/scan/scan_reading_screen.dart';
 import 'features/scan/scan_result_screen.dart';
+import 'features/report/export_done_screen.dart';
+import 'features/report/export_progress_screen.dart';
+import 'features/report/export_screen.dart';
+import 'features/report/report_screen.dart';
 import 'features/scan/scan_screen.dart';
+import 'data/export/report_exporter.dart';
 
 final _router = GoRouter(
   initialLocation: '/',
@@ -73,11 +78,7 @@ final _router = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/laporan',
-              builder: (_, _) =>
-                  const PlaceholderScreen(title: 'Laporan', designRef: '14'),
-            ),
+            GoRoute(path: '/laporan', builder: (_, _) => const ReportScreen()),
           ],
         ),
         StatefulShellBranch(
@@ -92,6 +93,27 @@ final _router = GoRouter(
       ],
     ),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
+    GoRoute(
+      path: '/export',
+      builder: (_, state) {
+        // ?bulan=2026-09 (bulan yang dilihat di layar Laporan).
+        final now = DateTime.now();
+        final parsed = DateTime.tryParse(
+          '${state.uri.queryParameters['bulan'] ?? ''}-01',
+        );
+        return ExportScreen(month: parsed ?? DateTime(now.year, now.month));
+      },
+    ),
+    GoRoute(
+      path: '/export/proses',
+      builder: (_, state) =>
+          ExportProgressScreen(request: state.extra! as ExportRequest),
+    ),
+    GoRoute(
+      path: '/export/siap',
+      builder: (_, state) =>
+          ExportDoneScreen(result: state.extra! as ExportResult),
+    ),
     GoRoute(
       path: '/baca-struk',
       builder: (_, state) =>

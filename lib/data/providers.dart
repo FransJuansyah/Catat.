@@ -6,9 +6,11 @@ import '../domain/pocket_config.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
+import 'export/report_exporter.dart';
 import 'local/database.dart';
 import 'receipt_scanner.dart';
 import 'repositories/budget_repository.dart';
+import 'repositories/report_repository.dart';
 
 /// Jam sistem. Di-override di test agar tanggal bisa dikontrol.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -272,3 +274,21 @@ final pocketDraftProvider =
     AsyncNotifierProvider.autoDispose<PocketDraftController, PocketDraft>(
       PocketDraftController.new,
     );
+
+// --------------------------------------------------------------- laporan
+
+final reportRepositoryProvider = Provider<ReportRepository>(
+  (ref) =>
+      ReportRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
+/// Argumen: tanggal 1 bulan laporan (layar 14).
+final monthReportProvider = StreamProvider.autoDispose
+    .family<MonthReport, DateTime>(
+      (ref, month) => ref.watch(reportRepositoryProvider).watchMonth(month),
+    );
+
+/// Penyusun & penyimpan file laporan. Di-override di test.
+final reportExporterProvider = Provider<ReportExporter>(
+  (ref) => const ReportExporter(),
+);
