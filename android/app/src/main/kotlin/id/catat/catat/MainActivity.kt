@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         current = java.lang.ref.WeakReference(this)
         AutoCapture.createChannels(this)
+        Thread { SlipFile.cleanCache(this) }.start()
         pendingLaunch = launchOf(intent)
     }
 
@@ -73,9 +74,7 @@ class MainActivity : FlutterActivity() {
     /// Salin gambar yang dibagikan ke cache (URI dari app lain bisa kedaluwarsa).
     private fun copyShared(uri: Uri): String? = try {
         val target = File(cacheDir, "bagikan_${System.currentTimeMillis()}.jpg")
-        contentResolver.openInputStream(uri)!!.use { input ->
-            target.outputStream().use { input.copyTo(it) }
-        }
+        SlipFile.copyLimited(this, uri, target)
         target.path
     } catch (e: Exception) {
         android.util.Log.w("catat.share", "Gambar yang dibagikan gagal dibaca: $uri", e)

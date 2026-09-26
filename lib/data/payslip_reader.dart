@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 
 import '../domain/payslip_parser.dart';
@@ -18,7 +20,18 @@ class DevicePayslipReader implements PayslipReader {
   @override
   Future<String?> pick() => _channel.invokeMethod<String>('pickSlip');
 
+  /// Slip gaji dokumen pribadi: yang disimpan cuma nominal & tanggal, salinan
+  /// gambarnya langsung dibuang setelah dibaca.
   @override
-  Future<PayslipData> read(String imagePath) async =>
-      parsePayslip(await readTextRows(imagePath));
+  Future<PayslipData> read(String imagePath) async {
+    try {
+      return parsePayslip(await readTextRows(imagePath));
+    } finally {
+      try {
+        await File(imagePath).delete();
+      } on FileSystemException {
+        // Sudah tidak ada: tidak apa-apa.
+      }
+    }
+  }
 }
