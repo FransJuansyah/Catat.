@@ -28,9 +28,13 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     try {
       await ref.read(onboardingProvider.notifier).finish();
       if (!mounted) return;
+      // Langkah terakhir: Privasi & Izin (35), lalu Beranda / Gajian masuk.
       // Penghasilan tidak tetap belum punya pemasukan → langsung ke Beranda.
       final mode = ref.read(onboardingProvider).mode;
-      context.go(mode == IncomeMode.irregular ? '/beranda' : '/gajian-masuk');
+      final next = mode == IncomeMode.irregular ? '/beranda' : '/gajian-masuk';
+      context.go(
+        Uri(path: '/privasi-awal', queryParameters: {'next': next}).toString(),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);

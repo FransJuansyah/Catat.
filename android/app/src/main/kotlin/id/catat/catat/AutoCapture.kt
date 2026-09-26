@@ -149,12 +149,27 @@ object AutoCapture {
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun isEnabled(context: Context) = prefs(context).getBoolean(KEY_ENABLED, false)
+    /// Sumber catat otomatis yang bisa dipilih user (layar Privasi & Izin).
+    val SOURCES = listOf("financeApp", "sms", "email")
 
-    fun setEnabled(context: Context, on: Boolean) {
-        prefs(context).edit().putBoolean(KEY_ENABLED, on).apply()
-        if (!on) prefs(context).edit().remove(KEY_QUEUE).apply()
+    /// Sumber dinyalakan user? Versi lama cuma punya satu saklar "enabled".
+    fun isSourceOn(context: Context, source: String): Boolean =
+        prefs(context).getBoolean("src_$source", prefs(context).getBoolean(KEY_ENABLED, false))
+
+    fun setSource(context: Context, source: String, on: Boolean) {
+        val p = prefs(context)
+        val edit = p.edit()
+        // Pindah dari saklar lama: tulis semua sumber dulu sebelum mengubah satu.
+        for (s in SOURCES) if (!p.contains("src_$s")) edit.putBoolean("src_$s", isSourceOn(context, s))
+        edit.putBoolean("src_$source", on)
+        edit.apply()
+        val any = SOURCES.any { if (it == source) on else isSourceOn(context, it) }
+        p.edit().putBoolean(KEY_ENABLED, any).apply()
+        if (!any) p.edit().remove(KEY_QUEUE).apply()
     }
+
+    /// Ada sumber yang menyala.
+    fun isEnabled(context: Context) = SOURCES.any { isSourceOn(context, it) }
 
     fun hasListenerAccess(context: Context): Boolean {
         val flat = Settings.Secure.getString(
@@ -220,7 +235,8 @@ object AutoCapture {
         text: String,
         postedAt: Long,
     ) {
-        if (!isEnabled(context)) return
+        // Sumber ini dimatikan user (mis. SMS mati, m-banking nyala).
+        if (!isSourceOn(context, source)) return
         val all = "$title. $text"
         // SMS & email: hanya yang menyebut bank / e-wallet (pengirim dulu).
         // Saringan kasar; keputusan akhir (iklan, arah, dll.) di Dart.

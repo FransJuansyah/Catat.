@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +5,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
-import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
@@ -16,7 +13,7 @@ import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/types.dart';
 
-/// Layar 17 · Akun. Login, Keamanan & Keluar menyusul di F8.
+/// Layar 17 / 38 · Akun. Login, Keamanan & Keluar menyusul di F8.
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -40,32 +37,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   void dispose() {
     _lifecycle.dispose();
     super.dispose();
-  }
-
-  Future<void> _setAuto(AutoStatus status, bool on) async {
-    final bridge = ref.read(autoCaptureProvider);
-    if (!on) {
-      await bridge.setEnabled(false);
-      ref.invalidate(autoStatusProvider);
-      return;
-    }
-    // Penjelasan wajib sebelum minta akses notifikasi (kebijakan Play).
-    final ok = await showConfirmSheet(
-      context,
-      title: 'Catat otomatis dari notifikasi',
-      message:
-          'Tiap ada notifikasi transaksi dari m-banking & e-wallet, atau SMS '
-          'dan email dari bank, catat. langsung nyatet di belakang layar. '
-          'Salah? Tinggal Batalkan dari notifnya. Chat (WhatsApp, dll.) & '
-          'notifikasi lain nggak dibaca. Semua diproses di HP ini.\n\n'
-          'Habis ini, nyalain izin "Akses notifikasi" buat catat.',
-      confirmLabel: 'Buka pengaturan',
-    );
-    if (!ok) return;
-    await bridge.requestNotifications();
-    final next = await bridge.setEnabled(true);
-    if (!next.listenerAccess) await bridge.openAccessSettings();
-    ref.invalidate(autoStatusProvider);
   }
 
   Future<void> _setReminder(bool on) async {
@@ -129,22 +100,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   onChanged: _setReminder,
                 ),
               ),
+              // Layar 38: catat otomatis, kamera & notifikasi di satu tempat.
               _Row(
-                icon: LucideIcons.bellRing,
-                title: 'Catat otomatis',
-                subtitle: !status.enabled || status.active
-                    ? 'Dari m-banking, SMS & email'
-                    : 'Izin belum nyala, ketuk buat atur',
-                subtitleColor: status.enabled && !status.active
-                    ? AppColors.danger
-                    : null,
-                onTap: status.enabled && !status.active
-                    ? () => _setAuto(status, true)
-                    : null,
-                trailing: AppToggle(
-                  value: status.enabled,
-                  onChanged: (on) => _setAuto(status, on),
-                ),
+                icon: LucideIcons.shieldCheck,
+                title: 'Privasi & izin',
+                subtitle: status.needsAccess
+                    ? 'Izin belum nyala, ketuk buat atur'
+                    : 'Catat otomatis, kamera, notifikasi',
+                subtitleColor: status.needsAccess ? AppColors.danger : null,
+                onTap: () => context.push('/privasi'),
               ),
             ],
           ),

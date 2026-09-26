@@ -4,18 +4,22 @@ import 'package:flutter/services.dart';
 
 import '../domain/bank_notification_parser.dart';
 
-/// Status catat otomatis & pengingat (layar Akun).
+/// Status izin & fitur (layar Privasi & Izin, Akun).
 class AutoStatus {
   const AutoStatus({
-    this.enabled = false,
+    this.sources = const {},
+    this.cameraGranted = false,
     this.listenerAccess = false,
     this.canNotify = false,
     this.reminder = false,
     this.reminderHour = 21,
   });
 
-  /// User menyalakan "Catat otomatis" di Akun.
-  final bool enabled;
+  /// Sumber catat otomatis yang dinyalakan user.
+  final Set<NotificationSource> sources;
+
+  /// Izin kamera Android (scan struk).
+  final bool cameraGranted;
 
   /// Izin "Akses notifikasi" untuk catat. sudah diberikan di Pengaturan.
   final bool listenerAccess;
@@ -25,16 +29,29 @@ class AutoStatus {
   final bool reminder;
   final int reminderHour;
 
+  /// Ada sumber catat otomatis yang dinyalakan.
+  bool get enabled => sources.isNotEmpty;
+
   /// Benar-benar jalan: dinyalakan + izin lengkap.
   bool get active => enabled && listenerAccess && canNotify;
 
-  factory AutoStatus.fromMap(Map<Object?, Object?> m) => AutoStatus(
-    enabled: m['enabled'] == true,
-    listenerAccess: m['listenerAccess'] == true,
-    canNotify: m['canNotify'] == true,
-    reminder: m['reminder'] == true,
-    reminderHour: (m['reminderHour'] as int?) ?? 21,
-  );
+  /// Dinyalakan tapi izin Android belum lengkap.
+  bool get needsAccess => enabled && !active;
+
+  factory AutoStatus.fromMap(Map<Object?, Object?> m) {
+    final src = (m['sources'] as Map<Object?, Object?>?) ?? const {};
+    return AutoStatus(
+      sources: {
+        for (final s in NotificationSource.values)
+          if (src[s.name] == true) s,
+      },
+      cameraGranted: m['cameraGranted'] == true,
+      listenerAccess: m['listenerAccess'] == true,
+      canNotify: m['canNotify'] == true,
+      reminder: m['reminder'] == true,
+      reminderHour: (m['reminderHour'] as int?) ?? 21,
+    );
+  }
 }
 
 /// Aplikasi dibuka dari notif catat. / share gambar / pengingat.
@@ -68,14 +85,22 @@ class RouteLaunch extends LaunchAction {
 /// Di-override di test.
 abstract class AutoCaptureBridge {
   Future<AutoStatus> status();
-  Future<AutoStatus> setEnabled(bool on);
+
+  /// Nyalakan / matikan satu sumber catat otomatis.
+  Future<AutoStatus> setSource(NotificationSource source, bool on);
   Future<AutoStatus> setReminder(bool on);
 
   /// Buka halaman "Akses notifikasi" di Pengaturan Android.
   Future<void> openAccessSettings();
 
+  /// Buka info aplikasi di Pengaturan (izin hanya bisa dicabut dari sana).
+  Future<void> openAppSettings();
+
   /// Minta izin kirim notifikasi (Android 13+). true = diizinkan.
   Future<bool> requestNotifications();
+
+  /// Minta izin kamera. true = diizinkan.
+  Future<bool> requestCamera();
 
   /// Aksi pembukaan yang menunggu (sekali ambil).
   Future<LaunchAction?> takeLaunch();
@@ -112,7 +137,8 @@ class ChannelAutoCaptureBridge implements AutoCaptureBridge {
   Future<AutoStatus> status() => _status('status');
 
   @override
-  Future<AutoStatus> setEnabled(bool on) => _status('setEnabled', {'on': on});
+  Future<AutoStatus> setSource(NotificationSource source, bool on) =>
+      _status('setSource', {'source': source.name, 'on': on});
 
   @override
   Future<AutoStatus> setReminder(bool on) => _status('setReminder', {'on': on});
@@ -122,8 +148,16 @@ class ChannelAutoCaptureBridge implements AutoCaptureBridge {
       _channel.invokeMethod<void>('openAccessSettings');
 
   @override
+  Future<void> openAppSettings() =>
+      _channel.invokeMethod<void>('openAppSettings');
+
+  @override
   Future<bool> requestNotifications() async =>
       await _channel.invokeMethod<bool>('requestNotifications') ?? false;
+
+  @override
+  Future<bool> requestCamera() async =>
+      await _channel.invokeMethod<bool>('requestCamera') ?? false;
 
   @override
   Future<LaunchAction?> takeLaunch() async {

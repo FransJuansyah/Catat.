@@ -18,6 +18,11 @@ abstract final class AppColors {
   static const disabledBg = Color(0xFFDADAD4);
   static const segmentBg = Color(0xFFE7E7E1);
   static const limeText = Color(0xFF4A5A12);
+
+  /// Kartu peringatan kuning (layar 25, Privasi & Izin).
+  static const warnBg = Color(0xFFFEF7DC);
+  static const warnIcon = Color(0xFFA16207);
+  static const warnText = Color(0xFF854D0E);
 }
 
 abstract final class AppRadius {

@@ -119,3 +119,9 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
   - Tiap item diberi ikon **ⓘ** (lingkaran berisi "i") yang menjelaskan kenapa fitur
     itu perlu dinyalakan atau boleh dimatikan.
   - Butuh desain dulu (Figma) sebelum dibangun.
+  - **Keputusan (26 Sep 2026):** layar "Privasi & izin" = langkah terakhir onboarding
+    (setelah pilih template, sebelum Beranda); semua item **mati** secara default +
+    tombol "Nyalakan yang disarankan"; pop-up izin Android baru muncul saat item
+    dinyalakan; sumber catat otomatis dipilih per sumber (m-banking/e-wallet, SMS,
+    email); daftar "tidak pernah diakses" (chat, kontak, lokasi, mikrofon); sama
+    persis di Akun → "Privasi & izin". Desain dibuat di Figma dulu.

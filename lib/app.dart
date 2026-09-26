@@ -33,6 +33,7 @@ import 'features/pocket/pocket_detail_screen.dart';
 import 'features/pocket/pocket_edit_screen.dart';
 import 'features/pocket/pocket_settings_screen.dart';
 import 'features/pocket/transfer_screen.dart';
+import 'features/privacy/privacy_screen.dart';
 import 'features/scan/scan_reading_screen.dart';
 import 'features/scan/scan_result_screen.dart';
 import 'features/report/export_done_screen.dart';
@@ -195,6 +196,15 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(path: '/gajian-masuk', builder: (_, _) => const PaydayScreen()),
+    // Layar 35 (onboarding) & 37 (dari Akun).
+    GoRoute(
+      path: '/privasi-awal',
+      builder: (_, state) => PrivacyScreen(
+        onboarding: true,
+        next: state.uri.queryParameters['next'],
+      ),
+    ),
+    GoRoute(path: '/privasi', builder: (_, _) => const PrivacyScreen()),
   ],
 );
 

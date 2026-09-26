@@ -86,14 +86,28 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_NOTIFICATIONS) {
-            permissionResult?.success(AutoCapture.canPostNotifications(this))
-            permissionResult = null
+        when (requestCode) {
+            REQUEST_NOTIFICATIONS -> permissionResult?.success(AutoCapture.canPostNotifications(this))
+            REQUEST_CAMERA -> permissionResult?.success(cameraGranted())
+        }
+        permissionResult = null
+    }
+
+    private fun cameraGranted() =
+        checkSelfPermission(Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun requestPermission(permission: String, code: Int, granted: Boolean, result: MethodChannel.Result) {
+        if (granted) {
+            result.success(true)
+        } else {
+            permissionResult = result
+            requestPermissions(arrayOf(permission), code)
         }
     }
 
     private fun autoStatus() = mapOf(
-        "enabled" to AutoCapture.isEnabled(this),
+        "sources" to AutoCapture.SOURCES.associateWith { AutoCapture.isSourceOn(this, it) },
+        "cameraGranted" to cameraGranted(),
         "listenerAccess" to AutoCapture.hasListenerAccess(this),
         "canNotify" to AutoCapture.canPostNotifications(this),
         "reminder" to DailyReminder.isOn(this),
@@ -107,9 +121,27 @@ class MainActivity : FlutterActivity() {
                 setMethodCallHandler { call, result ->
                     when (call.method) {
                         "status" -> result.success(autoStatus())
-                        "setEnabled" -> {
-                            AutoCapture.setEnabled(this@MainActivity, call.argument<Boolean>("on")!!)
+                        "setSource" -> {
+                            AutoCapture.setSource(
+                                this@MainActivity,
+                                call.argument<String>("source")!!,
+                                call.argument<Boolean>("on")!!,
+                            )
                             result.success(autoStatus())
+                        }
+                        "requestCamera" -> requestPermission(
+                            Manifest.permission.CAMERA,
+                            REQUEST_CAMERA,
+                            cameraGranted(),
+                            result,
+                        )
+                        "openAppSettings" -> {
+                            // Izin Android (kamera, notifikasi) cuma bisa dicabut dari sini.
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData(Uri.fromParts("package", packageName, null)),
+                            )
+                            result.success(true)
                         }
                         "setReminder" -> {
                             DailyReminder.set(this@MainActivity, call.argument<Boolean>("on")!!)
@@ -119,17 +151,12 @@ class MainActivity : FlutterActivity() {
                             openListenerSettings()
                             result.success(true)
                         }
-                        "requestNotifications" -> {
-                            if (AutoCapture.canPostNotifications(this@MainActivity)) {
-                                result.success(true)
-                            } else {
-                                permissionResult = result
-                                requestPermissions(
-                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                                    REQUEST_NOTIFICATIONS,
-                                )
-                            }
-                        }
+                        "requestNotifications" -> requestPermission(
+                            Manifest.permission.POST_NOTIFICATIONS,
+                            REQUEST_NOTIFICATIONS,
+                            AutoCapture.canPostNotifications(this@MainActivity),
+                            result,
+                        )
                         "takeLaunch" -> {
                             result.success(pendingLaunch)
                             pendingLaunch = null
@@ -222,6 +249,7 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val REQUEST_NOTIFICATIONS = 42
+        private const val REQUEST_CAMERA = 43
         private var current: java.lang.ref.WeakReference<MainActivity>? = null
 
         /// Catatan berubah dari latar belakang → UI yang terbuka muat ulang.
