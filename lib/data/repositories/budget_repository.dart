@@ -66,6 +66,9 @@ class BudgetRepository {
       throw ArgumentError.value(weekday, 'weekday');
     }
     return _db.transaction(() async {
+      // Sekali saja: onboarding yang terbuka lagi (mis. tombol ganda, deep
+      // link) tidak boleh menggandakan profil, pengaturan & kantong.
+      if (await isSetUp()) throw StateError('Sudah di-setup');
       await _db
           .into(_db.profiles)
           .insert(ProfilesCompanion.insert(id: _newId(), name: userName));

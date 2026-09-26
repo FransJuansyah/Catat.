@@ -137,7 +137,30 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
     ],
   );
 
+  /// Kantong bisa banyak (sampai 9+): isi di-scroll, tombol tetap di bawah.
   Widget _celebrate(PaydayInfo info) => Column(
+    children: [
+      Expanded(
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight),
+              child: IntrinsicHeight(child: _celebrateBody(info)),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      AppButton(
+        label: 'Mantap, lanjut',
+        loading: _busy,
+        style: AppButtonStyle.lime,
+        onPressed: () => _continue(info),
+      ),
+    ],
+  );
+
+  Widget _celebrateBody(PaydayInfo info) => Column(
     children: [
       const Spacer(),
       _header(info),
@@ -224,12 +247,6 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
         ),
       ),
       const Spacer(),
-      AppButton(
-        label: 'Mantap, lanjut',
-        loading: _busy,
-        style: AppButtonStyle.lime,
-        onPressed: () => _continue(info),
-      ),
     ],
   );
 

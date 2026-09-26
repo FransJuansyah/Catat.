@@ -35,6 +35,9 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
       context.go(
         Uri(path: '/privasi-awal', queryParameters: {'next': next}).toString(),
       );
+    } on StateError {
+      // Sudah terdaftar (onboarding terbuka lagi) → data lama dipertahankan.
+      if (mounted) context.go('/beranda');
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
