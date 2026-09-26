@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,6 +83,10 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           if (detail.items.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             _ReceiptItems(items: detail.items),
+                          ],
+                          if (detail.photoPath case final photo?) ...[
+                            const SizedBox(height: 16),
+                            _ReceiptPhoto(path: photo),
                           ],
                           if (detail.note != null) ...[
                             const SizedBox(height: 16),
@@ -216,22 +222,25 @@ class _ReceiptItems extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Flexible(
-                  child: Text(
-                    item.name,
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: item.name),
+                        TextSpan(
+                          text: '  x${item.qty}',
+                          style: AppText.style(
+                            13,
+                            AppText.w500,
+                            color: AppColors.faint,
+                          ),
+                        ),
+                      ],
+                    ),
                     style: AppText.style(14, AppText.w500),
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'x${item.qty}',
-                  style: AppText.style(
-                    13,
-                    AppText.w500,
-                    color: AppColors.faint,
-                  ),
-                ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 Text(
                   rupiah(item.price),
                   style: AppText.style(14, AppText.w700),
@@ -240,6 +249,75 @@ class _ReceiptItems extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Foto struk asli (dari scan). Ketuk → layar penuh, bisa di-zoom.
+class _ReceiptPhoto extends StatelessWidget {
+  const _ReceiptPhoto({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = File(path);
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => showDialog<void>(
+          context: context,
+          barrierColor: Colors.black,
+          builder: (context) => GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: InteractiveViewer(
+              maxScale: 5,
+              child: Center(child: Image.file(file)),
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  file,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  cacheWidth: 168,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 56,
+                    height: 56,
+                    color: AppColors.bg,
+                    child: const Icon(
+                      LucideIcons.imageOff,
+                      size: 20,
+                      color: AppColors.faint,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Foto struk',
+                  style: AppText.style(15, AppText.w700),
+                ),
+              ),
+              const Icon(
+                LucideIcons.maximize2,
+                size: 18,
+                color: AppColors.faint,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -527,6 +527,7 @@ class BudgetRepository {
     ExpenseSource source = ExpenseSource.manual,
     String? merchant,
     String? note,
+    String? photoPath,
     List<ExpenseItemInput> items = const [],
   }) {
     if (amount <= 0) {
@@ -549,6 +550,7 @@ class BudgetRepository {
               source: source,
               merchant: Value(merchant),
               note: Value(note),
+              photoPath: Value(photoPath),
             ),
           );
       for (final item in items) {
