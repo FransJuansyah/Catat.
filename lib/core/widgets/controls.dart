@@ -88,7 +88,8 @@ class DashedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _DashedRRectPainter(),
+      // Di atas latar kartu; kalau di bawah, garisnya tertutup Material.
+      foregroundPainter: _DashedRRectPainter(),
       child: Material(
         color: const Color(0xFFFBFBF7),
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -195,12 +196,17 @@ class SplitBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Bagian bisa berupa persen atau nominal (ribuan) → dinormalkan supaya
+    // perbandingannya tetap benar (flex dibatasi, nominal besar ikut rata).
+    final total = parts.fold<int>(0, (s, p) => s + (p.$1 > 0 ? p.$1 : 0));
     return Row(
       children: [
         for (final (i, (percent, color)) in parts.indexed) ...[
           if (i > 0) SizedBox(width: gap),
           Expanded(
-            flex: percent.clamp(1, 1000),
+            flex: total <= 0
+                ? 1
+                : (percent * 1000 / total).round().clamp(1, 1000),
             child: Container(
               height: height,
               decoration: BoxDecoration(

@@ -1,12 +1,13 @@
-# Ikon aplikasi dari design/brand (desain Figma "Aset Aplikasi", Ikon A).
+# Ikon aplikasi dari design/brand: lime penuh + dompet hitam, tanpa latar
+# hitam (keputusan user 27 Sep 2026, varian "app-icon-lime").
 # Jalankan ulang setelah aset berubah: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "design/brand/android/app-icon.png"
-  adaptive_icon_background: "#0E0E10"
-  adaptive_icon_foreground: "design/brand/android/adaptive-foreground.png"
+  image_path: "design/brand/app-icon-lime-1024.png"
+  adaptive_icon_background: "#D4FF4F"
+  adaptive_icon_foreground: "design/brand/android/adaptive-foreground-lime.png"
   adaptive_icon_foreground_inset: 0
   adaptive_icon_monochrome: "design/brand/android/adaptive-monochrome.png"
   remove_alpha_ios: true
-  background_color_ios: "#0E0E10"
+  background_color_ios: "#D4FF4F"

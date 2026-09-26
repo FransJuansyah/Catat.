@@ -537,7 +537,7 @@ class _RemoveSheetState extends State<_RemoveSheet> {
             AppButton(
               label: 'Hapus & pindahin',
               icon: LucideIcons.trash2,
-              style: AppButtonStyle.danger,
+              style: AppButtonStyle.dangerFilled,
               onPressed: () => Navigator.pop(context, _target),
             ),
             const SizedBox(height: 10),

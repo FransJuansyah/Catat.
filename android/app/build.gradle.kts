@@ -37,6 +37,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = "catat."
     }
 
     signingConfigs {
@@ -51,6 +52,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // CATAT_UJI=1 flutter build apk --debug → salinan uji terpisah
+            // (id.catat.catat.uji, "catat. uji") dengan data kosong, buat coba
+            // pendaftaran tanpa menyentuh data asli di HP yang sama.
+            if (System.getenv("CATAT_UJI") == "1") {
+                applicationIdSuffix = ".uji"
+                manifestPlaceholders["appLabel"] = "catat. uji"
+            }
+        }
         release {
             signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
