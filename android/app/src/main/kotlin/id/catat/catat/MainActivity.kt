@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
     /// Aksi dari notif catat. / share gambar, menunggu diambil Dart.
     private var pendingLaunch: Map<String, Any>? = null
     private var permissionResult: MethodChannel.Result? = null
+    private var slipResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +80,35 @@ class MainActivity : FlutterActivity() {
     } catch (e: Exception) {
         android.util.Log.w("catat.share", "Gambar yang dibagikan gagal dibaca: $uri", e)
         null
+    }
+
+    @Deprecated("FlutterActivity belum pakai Activity Result API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_SLIP) return
+        val result = slipResult ?: return
+        slipResult = null
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            result.success(null)
+            return
+        }
+        // Render PDF bisa ratusan ms → jangan di UI thread.
+        Thread {
+            val path = try {
+                SlipFile.toImage(this, uri)
+            } catch (e: Exception) {
+                android.util.Log.w("catat.slip", "Slip gagal dibuka: $uri", e)
+                null
+            }
+            runOnUiThread {
+                if (path != null) {
+                    result.success(path)
+                } else {
+                    result.error("SLIP", "File slip nggak bisa dibuka", null)
+                }
+            }
+        }.start()
     }
 
     override fun onRequestPermissionsResult(
@@ -166,6 +196,17 @@ class MainActivity : FlutterActivity() {
                     }
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/files")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "pickSlip" -> {
+                        slipResult?.success(null)
+                        slipResult = result
+                        startActivityForResult(SlipFile.pickIntent(), REQUEST_SLIP)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/downloads")
             .setMethodCallHandler { call, result ->
                 try {
@@ -251,6 +292,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val REQUEST_NOTIFICATIONS = 42
         private const val REQUEST_CAMERA = 43
+        private const val REQUEST_SLIP = 44
         private var current: java.lang.ref.WeakReference<MainActivity>? = null
 
         /// Catatan berubah dari latar belakang → UI yang terbuka muat ulang.

@@ -9,6 +9,7 @@ import '../domain/views.dart';
 import 'auto_capture.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
+import 'payslip_reader.dart';
 import 'receipt_scanner.dart';
 import 'repositories/budget_repository.dart';
 import 'repositories/report_repository.dart';
@@ -30,6 +31,11 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
 /// Pembaca struk (ML Kit). Di-override di test.
 final receiptScannerProvider = Provider<ReceiptScanner>(
   (ref) => MlKitReceiptScanner(ref.watch(clockProvider)),
+);
+
+/// Pemilih & pembaca slip gaji (F6). Di-override di test.
+final payslipReaderProvider = Provider<PayslipReader>(
+  (ref) => DevicePayslipReader(),
 );
 
 /// Apakah onboarding (gaji + kantong) sudah selesai. Dipakai Splash.

@@ -30,28 +30,8 @@ class MlKitReceiptScanner implements ReceiptScanner {
   final DateTime Function() _now;
 
   @override
-  Future<ReceiptData> read(String imagePath) async {
-    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    try {
-      final result = await recognizer.processImage(
-        InputImage.fromFilePath(imagePath),
-      );
-      final lines = [
-        for (final block in result.blocks)
-          for (final line in block.lines)
-            OcrLine(
-              line.text,
-              line.boundingBox.left,
-              line.boundingBox.top,
-              line.boundingBox.right,
-              line.boundingBox.bottom,
-            ),
-      ];
-      return parseReceipt(groupRows(lines), now: _now());
-    } finally {
-      await recognizer.close();
-    }
-  }
+  Future<ReceiptData> read(String imagePath) async =>
+      parseReceipt(await readTextRows(imagePath), now: _now());
 
   @override
   Future<String> keepPhoto(String imagePath) async {
@@ -65,5 +45,28 @@ class MlKitReceiptScanner implements ReceiptScanner {
     final target = p.join(dir.path, '${const Uuid().v4()}$ext');
     await File(imagePath).copy(target);
     return target;
+  }
+}
+
+/// OCR di HP (ML Kit): teks foto per baris, kiri → kanan. Dipakai struk & slip.
+Future<List<String>> readTextRows(String imagePath) async {
+  final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+  try {
+    final result = await recognizer.processImage(
+      InputImage.fromFilePath(imagePath),
+    );
+    return groupRows([
+      for (final block in result.blocks)
+        for (final line in block.lines)
+          OcrLine(
+            line.text,
+            line.boundingBox.left,
+            line.boundingBox.top,
+            line.boundingBox.right,
+            line.boundingBox.bottom,
+          ),
+    ]);
+  } finally {
+    await recognizer.close();
   }
 }

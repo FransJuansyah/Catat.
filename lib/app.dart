@@ -23,6 +23,7 @@ import 'features/income/income_saved_screen.dart';
 import 'features/notes/notes_screen.dart';
 import 'features/onboarding/allowance_setup_screen.dart';
 import 'features/onboarding/irregular_setup_screen.dart';
+import 'features/onboarding/payslip_reading_screen.dart';
 import 'features/onboarding/salary_setup_screen.dart';
 import 'features/onboarding/source_screen.dart';
 import 'features/onboarding/splash_screen.dart';
@@ -51,6 +52,11 @@ final _router = GoRouter(
     GoRoute(path: '/masuk', builder: (_, _) => const WelcomeScreen()),
     GoRoute(path: '/sumber-uang', builder: (_, _) => const SourceScreen()),
     GoRoute(path: '/atur-gaji', builder: (_, _) => const SalarySetupScreen()),
+    GoRoute(
+      path: '/baca-slip',
+      builder: (_, state) =>
+          PayslipReadingScreen(imagePath: state.extra! as String),
+    ),
     GoRoute(
       path: '/atur-jajan',
       builder: (_, _) => const AllowanceSetupScreen(),

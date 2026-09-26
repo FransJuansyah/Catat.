@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
+import '../../domain/payslip_parser.dart';
 import 'onboarding_widgets.dart';
 
 /// Layar 02 · Atur Gaji (langkah 3 dari 4, gaji bulanan).
@@ -29,6 +32,32 @@ class SalarySetupScreen extends ConsumerWidget {
       if (v != null) ctrl.setAmount(v);
     }
 
+    Future<void> uploadSlip() async {
+      final messenger = ScaffoldMessenger.of(context);
+      void tell(String text) =>
+          messenger.showSnackBar(SnackBar(content: Text(text)));
+      String? path;
+      try {
+        path = await ref.read(payslipReaderProvider).pick();
+      } on PlatformException {
+        tell('File slipnya nggak bisa dibuka. Coba foto / PDF lain ya.');
+        return;
+      }
+      if (path == null || !context.mounted) return;
+      final slip = await context.push<PayslipData>('/baca-slip', extra: path);
+      if (slip == null) return;
+      final net = slip.netSalary;
+      final day = slip.payday;
+      if (net != null) ctrl.setAmount(net);
+      if (day != null) ctrl.setPayday(day);
+      tell(
+        net == null
+            ? 'Nominal gajinya nggak kebaca. Isi manual dulu ya.'
+            : 'Gaji bersih kebaca ${rupiah(net)}'
+                  '${day == null ? '' : ', gajian tgl $day'}. Cek lagi ya.',
+      );
+    }
+
     return OnboardingScaffold(
       title: 'Atur Gaji',
       canContinue: draft.amountReady,
@@ -40,13 +69,7 @@ class SalarySetupScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         DashedCard(
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Baca slip otomatis segera hadir. Isi manual dulu ya.',
-              ),
-            ),
-          ),
+          onTap: uploadSlip,
           child: Row(
             children: [
               const IconBadge(
