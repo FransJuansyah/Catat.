@@ -153,6 +153,7 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 | 24 | Kantong hampir habis | Bottom sheet di atas Beranda: tinggal 15%, Pindahin / Oke siap hemat |
 | 25 | Pindahin saldo | Dari → Ke (kantong), nominal, chip cepat, peringatan dana darurat |
 | 26 | Catatan kosong | Empty state "Nggak ada jajan hari ini!" |
+| 32 | Beranda (penghasilan tidak tetap) | Kartu "Saldo kamu sekarang" + "Masuk bulan ini", 2 kartu cepat Scan struk & Tambah pemasukan. **Tanpa** tombol "+ Pemasukan" di kartu saldo (dobel dengan kartu Tambah pemasukan; keputusan 26 Sep 2026, PNG lama masih menampilkannya) |
 
 ---
 

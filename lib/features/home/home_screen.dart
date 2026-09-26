@@ -265,42 +265,15 @@ class _RunningHero extends StatelessWidget {
         const SizedBox(height: 4),
         _BigAmount(rupiah(summary.remaining)),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Masuk bulan ini',
-                    style: AppText.style(
-                      12,
-                      AppText.w500,
-                      color: AppColors.faint,
-                    ),
-                  ),
-                  Text(
-                    '+${rupiah(summary.monthIncome)}',
-                    style: AppText.style(
-                      14,
-                      AppText.w800,
-                      color: AppColors.lime,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () => context.push('/pemasukan'),
-              child: const _Pill(
-                icon: LucideIcons.plus,
-                label: 'Pemasukan',
-                bg: AppColors.lime,
-                fg: AppColors.ink,
-                large: true,
-              ),
-            ),
-          ],
+        // Tombol "+ Pemasukan" dibuang: sudah ada kartu "Tambah pemasukan"
+        // tepat di bawahnya (keputusan 26 Sep 2026, desain 32/33 disesuaikan).
+        Text(
+          'Masuk bulan ini',
+          style: AppText.style(12, AppText.w500, color: AppColors.faint),
+        ),
+        Text(
+          '+${rupiah(summary.monthIncome)}',
+          style: AppText.style(14, AppText.w800, color: AppColors.lime),
         ),
       ],
     );
@@ -449,22 +422,17 @@ class _Pill extends StatelessWidget {
     required this.label,
     required this.bg,
     required this.fg,
-    this.large = false,
   });
 
   final IconData icon;
   final String label;
   final Color bg;
   final Color fg;
-  final bool large;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: large ? 12 : 10,
-        vertical: large ? 8 : 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppRadius.pill),
