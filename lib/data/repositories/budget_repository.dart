@@ -10,6 +10,7 @@ import '../../domain/home_summary.dart';
 import '../../domain/income_schedule.dart';
 import '../../domain/pay_period.dart';
 import '../../domain/pocket_balance.dart';
+import '../../domain/pocket_config.dart';
 import '../../domain/templates.dart';
 import '../../domain/types.dart';
 import '../../domain/views.dart';
@@ -166,10 +167,56 @@ class BudgetRepository {
               ),
             );
       }
+      await _rollover(pockets, period.start, periodId);
     }
     return (_db.select(
       _db.periods,
     )..where((t) => t.id.equals(periodId))).getSingle();
+  }
+
+  /// Sisa kantong ber-"pindah ke Dana Darurat" di periode sebelumnya masuk ke
+  /// kantong darurat periode baru (layar 22).
+  Future<void> _rollover(
+    List<PocketRow> pockets,
+    DateTime start,
+    String periodId,
+  ) async {
+    final emergency = pockets
+        .where((p) => p.type == PocketType.darurat)
+        .firstOrNull;
+    final sources = pockets.where(
+      (p) => p.rolloverToEmergency && p.id != emergency?.id,
+    );
+    if (emergency == null || sources.isEmpty) return;
+    final previous =
+        await (_db.select(_db.periods)
+              ..where(
+                (t) =>
+                    t.deletedAt.isNull() &
+                    t.startDate.isSmallerThanValue(start),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.startDate)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (previous == null) return;
+    final balances = await _balances(previous.id);
+    for (final p in sources) {
+      final left = balances[p.id]?.remaining ?? 0;
+      if (left <= 0) continue;
+      await _db
+          .into(_db.transfers)
+          .insert(
+            TransfersCompanion.insert(
+              id: _newId(),
+              fromPocketId: p.id,
+              toPocketId: emergency.id,
+              periodId: previous.id,
+              toPeriodId: Value(periodId),
+              amount: left,
+              occurredAt: start,
+            ),
+          );
+    }
   }
 
   /// Pemasukan otomatis periode berjalan & pembagiannya (layar 18).
@@ -213,30 +260,161 @@ class BudgetRepository {
       )..where((t) => t.id.equals(periodId))).write(
         PeriodsCompanion(salary: Value(salary), updatedAt: Value(now)),
       );
-      final pockets = await _activePockets();
-      final amounts = allocateAll(salary, pockets.map(_ruleOf).toList());
-      for (final p in pockets) {
-        await _db
-            .into(_db.periodAllocations)
-            .insert(
-              PeriodAllocationsCompanion.insert(
-                id: _newId(),
-                periodId: periodId,
-                pocketId: p.id,
-                amount: amounts[p.id]!,
+      await _reallocate(periodId, salary);
+    });
+  }
+
+  /// Hitung ulang jatah tiap kantong untuk satu periode.
+  Future<void> _reallocate(String periodId, int salary) async {
+    final now = _now();
+    final pockets = await _activePockets();
+    final amounts = allocateAll(salary, pockets.map(_ruleOf).toList());
+    for (final p in pockets) {
+      await _db
+          .into(_db.periodAllocations)
+          .insert(
+            PeriodAllocationsCompanion.insert(
+              id: _newId(),
+              periodId: periodId,
+              pocketId: p.id,
+              amount: amounts[p.id]!,
+            ),
+            onConflict: DoUpdate(
+              (_) => PeriodAllocationsCompanion(
+                amount: Value(amounts[p.id]!),
+                updatedAt: Value(now),
               ),
-              onConflict: DoUpdate(
-                (_) => PeriodAllocationsCompanion(
-                  amount: Value(amounts[p.id]!),
-                  updatedAt: Value(now),
-                ),
-                target: [
-                  _db.periodAllocations.periodId,
-                  _db.periodAllocations.pocketId,
-                ],
-              ),
-            );
+              target: [
+                _db.periodAllocations.periodId,
+                _db.periodAllocations.pocketId,
+              ],
+            ),
+          );
+    }
+  }
+
+  // -------------------------------------------------------------- pockets
+
+  /// Pengaturan semua kantong + pemasukan yang dibagi (layar 20).
+  Future<PocketSetup> loadPocketSetup() async {
+    final period = await ensureCurrentPeriod();
+    final settings = (await _salarySettings())!;
+    final schedule = _scheduleOf(settings);
+    return PocketSetup(
+      incomeMode: settings.incomeMode,
+      base: schedule.isRunningBalance
+          ? settings.monthlyEstimate ?? 0
+          : period.salary > 0
+          ? period.salary
+          : settings.netSalary,
+      perNoun: schedule.perNoun,
+      pockets: [
+        for (final p in await _activePockets())
+          PocketConfig(
+            id: p.id,
+            type: p.type,
+            name: p.name,
+            iconKey: p.iconKey,
+            color: p.color,
+            mode: p.mode,
+            percent: p.percent,
+            nominal: p.nominal,
+            rangeMin: p.rangeMin,
+            rangeMax: p.rangeMax,
+            lowThresholdPercent: p.lowThresholdPercent,
+            rolloverToEmergency: p.rolloverToEmergency,
+          ),
+      ],
+    );
+  }
+
+  /// Simpan pengaturan & urutan kantong (sesuai urutan [pockets]). Jatah
+  /// periode berjalan dihitung ulang; pemasukan yang sudah dibagi tidak diubah.
+  Future<void> savePockets(List<PocketConfig> pockets) {
+    for (final p in pockets) {
+      final name = p.name.trim();
+      if (name.isEmpty || name.length > 20) {
+        throw ArgumentError.value(p.name, 'name', 'harus 1-20 huruf');
       }
+      if (p.percent < 0 || p.percent > 100 || p.nominal < 0) {
+        throw ArgumentError.value(p.id, 'jatah', 'di luar batas');
+      }
+      if (p.rangeMin != null &&
+          p.rangeMax != null &&
+          p.rangeMin! > p.rangeMax!) {
+        throw ArgumentError.value(
+          p.rangeMin,
+          'rangeMin',
+          'lebih dari maksimal',
+        );
+      }
+    }
+    return _db.transaction(() async {
+      final now = _now();
+      for (final (i, p) in pockets.indexed) {
+        await (_db.update(_db.pockets)..where((t) => t.id.equals(p.id))).write(
+          PocketsCompanion(
+            name: Value(p.name.trim()),
+            iconKey: Value(p.iconKey),
+            color: Value(p.color),
+            sortOrder: Value(i),
+            mode: Value(p.mode),
+            percent: Value(p.percent),
+            nominal: Value(p.nominal),
+            rangeMin: Value(p.rangeMin),
+            rangeMax: Value(p.rangeMax),
+            lowThresholdPercent: Value(p.lowThresholdPercent),
+            rolloverToEmergency: Value(p.rolloverToEmergency),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+      final settings = (await _salarySettings())!;
+      if (settings.incomeMode != IncomeMode.irregular) {
+        final period = await _ensurePeriod(
+          settings,
+          _scheduleOf(settings).periodFor(now),
+        );
+        await _reallocate(period.id, period.salary);
+      }
+    });
+  }
+
+  /// Pindahin saldo antar kantong di periode berjalan (layar 25).
+  Future<void> transferBalance({
+    required String fromPocketId,
+    required String toPocketId,
+    required int amount,
+  }) {
+    if (amount <= 0) throw ArgumentError.value(amount, 'amount');
+    if (fromPocketId == toPocketId) {
+      throw ArgumentError.value(toPocketId, 'toPocketId', 'kantong sama');
+    }
+    return _db.transaction(() async {
+      final now = _now();
+      final settings = (await _salarySettings())!;
+      final running = settings.incomeMode == IncomeMode.irregular;
+      final period = await _ensurePeriod(
+        settings,
+        _scheduleOf(settings).periodFor(now),
+      );
+      final balances = await _balances(running ? null : period.id);
+      final available = balances[fromPocketId]?.remaining ?? 0;
+      if (amount > available) {
+        throw StateError('Saldo kantong asal cuma $available');
+      }
+      await _db
+          .into(_db.transfers)
+          .insert(
+            TransfersCompanion.insert(
+              id: _newId(),
+              fromPocketId: fromPocketId,
+              toPocketId: toPocketId,
+              periodId: period.id,
+              amount: amount,
+              occurredAt: now,
+            ),
+          );
     });
   }
 
@@ -767,6 +945,7 @@ class BudgetRepository {
           mode: p.mode,
           percent: p.percent,
           nominal: p.nominal,
+          lowThresholdPercent: p.lowThresholdPercent,
         ),
     ];
   }
@@ -894,21 +1073,30 @@ class BudgetRepository {
     final t = _db.transfers;
     final amountSum = t.amount.sum();
     Future<Map<String, int>> transferTotals(
-      GeneratedColumn<String> byPocket,
-    ) async {
+      GeneratedColumn<String> byPocket, {
+      required bool incoming,
+    }) async {
       final q = _db.selectOnly(t)
         ..addColumns([byPocket, amountSum])
         ..where(t.deletedAt.isNull())
         ..groupBy([byPocket]);
-      if (periodId != null) q.where(t.periodId.equals(periodId));
+      if (periodId != null) {
+        // Masuk dihitung di periode tujuan (sisa yang pindah ke periode baru).
+        q.where(
+          incoming
+              ? t.toPeriodId.equals(periodId) |
+                    (t.toPeriodId.isNull() & t.periodId.equals(periodId))
+              : t.periodId.equals(periodId),
+        );
+      }
       return {
         for (final r in await q.get())
           r.read(byPocket)!: r.read(amountSum) ?? 0,
       };
     }
 
-    final incoming = await transferTotals(t.toPocketId);
-    final outgoing = await transferTotals(t.fromPocketId);
+    final incoming = await transferTotals(t.toPocketId, incoming: true);
+    final outgoing = await transferTotals(t.fromPocketId, incoming: false);
     final ids = {
       ...alloc.keys,
       ...spent.keys,

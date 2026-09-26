@@ -10,6 +10,7 @@ import '../../core/widgets/pocket_card.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/types.dart';
+import '../pocket/low_pocket_sheet.dart';
 
 /// Layar 03 · Beranda — design/screens/03 · Beranda.png
 class HomeScreen extends ConsumerStatefulWidget {
@@ -32,6 +33,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _paydayShown = true;
       context.push('/gajian-masuk');
     }, fireImmediately: true);
+    // Kantong baru saja turun di bawah ambang → peringatan (layar 24), sekali
+    // per kejadian. Muncul di atas Beranda setelah layar lain ditutup.
+    ref.listenManual(homeSummaryProvider, (prev, next) {
+      final before = prev?.value;
+      final after = next.value;
+      if (before == null || after == null || !mounted) return;
+      final known = {for (final p in before.pockets) p.id: p.isLow};
+      final newlyLow = after.pockets
+          .where((p) => p.isLow && known[p.id] == false)
+          .firstOrNull;
+      if (newlyLow != null) showLowPocketSheet(context, newlyLow);
+    });
   }
 
   @override

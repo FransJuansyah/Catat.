@@ -21,7 +21,11 @@ import 'features/onboarding/template_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
 import 'features/payday/payday_screen.dart';
 import 'features/placeholder_screen.dart';
+import 'features/pocket/pocket_budget_screen.dart';
 import 'features/pocket/pocket_detail_screen.dart';
+import 'features/pocket/pocket_edit_screen.dart';
+import 'features/pocket/pocket_settings_screen.dart';
+import 'features/pocket/transfer_screen.dart';
 
 final _router = GoRouter(
   initialLocation: '/',
@@ -117,11 +121,7 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/kantong',
-      builder: (_, _) => const PlaceholderScreen(
-        title: 'Atur kantong',
-        designRef: '20',
-        showBack: true,
-      ),
+      builder: (_, _) => const PocketSettingsScreen(),
       routes: [
         GoRoute(
           path: ':id',
@@ -129,6 +129,23 @@ final _router = GoRouter(
               PocketDetailScreen(pocketId: state.pathParameters['id']!),
         ),
       ],
+    ),
+    GoRoute(
+      path: '/edit-kantong/:id',
+      builder: (_, state) =>
+          PocketEditScreen(pocketId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/jatah-kantong/:id',
+      builder: (_, state) =>
+          PocketBudgetScreen(pocketId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/pindah-saldo',
+      builder: (_, state) => TransferScreen(
+        fromId: state.uri.queryParameters['from'],
+        toId: state.uri.queryParameters['to'],
+      ),
     ),
     GoRoute(path: '/gajian-masuk', builder: (_, _) => const PaydayScreen()),
   ],

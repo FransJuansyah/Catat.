@@ -4394,6 +4394,20 @@ class $TransfersTable extends Transfers
       'REFERENCES periods (id)',
     ),
   );
+  static const VerificationMeta _toPeriodIdMeta = const VerificationMeta(
+    'toPeriodId',
+  );
+  @override
+  late final GeneratedColumn<String> toPeriodId = GeneratedColumn<String>(
+    'to_period_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES periods (id)',
+    ),
+  );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<int> amount = GeneratedColumn<int>(
@@ -4424,6 +4438,7 @@ class $TransfersTable extends Transfers
     fromPocketId,
     toPocketId,
     periodId,
+    toPeriodId,
     amount,
     occurredAt,
   ];
@@ -4492,6 +4507,15 @@ class $TransfersTable extends Transfers
     } else if (isInserting) {
       context.missing(_periodIdMeta);
     }
+    if (data.containsKey('to_period_id')) {
+      context.handle(
+        _toPeriodIdMeta,
+        toPeriodId.isAcceptableOrUnknown(
+          data['to_period_id']!,
+          _toPeriodIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('amount')) {
       context.handle(
         _amountMeta,
@@ -4545,6 +4569,10 @@ class $TransfersTable extends Transfers
         DriftSqlType.string,
         data['${effectivePrefix}period_id'],
       )!,
+      toPeriodId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_period_id'],
+      ),
       amount: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}amount'],
@@ -4569,7 +4597,13 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
   final DateTime? deletedAt;
   final String fromPocketId;
   final String toPocketId;
+
+  /// Periode asal (saldo keluar dihitung di sini).
   final String periodId;
+
+  /// Periode tujuan bila beda dengan asal: sisa akhir periode yang pindah ke
+  /// Dana Darurat periode berikutnya. null = periode yang sama.
+  final String? toPeriodId;
   final int amount;
   final DateTime occurredAt;
   const TransferRow({
@@ -4580,6 +4614,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
     required this.fromPocketId,
     required this.toPocketId,
     required this.periodId,
+    this.toPeriodId,
     required this.amount,
     required this.occurredAt,
   });
@@ -4595,6 +4630,9 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
     map['from_pocket_id'] = Variable<String>(fromPocketId);
     map['to_pocket_id'] = Variable<String>(toPocketId);
     map['period_id'] = Variable<String>(periodId);
+    if (!nullToAbsent || toPeriodId != null) {
+      map['to_period_id'] = Variable<String>(toPeriodId);
+    }
     map['amount'] = Variable<int>(amount);
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     return map;
@@ -4611,6 +4649,9 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
       fromPocketId: Value(fromPocketId),
       toPocketId: Value(toPocketId),
       periodId: Value(periodId),
+      toPeriodId: toPeriodId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toPeriodId),
       amount: Value(amount),
       occurredAt: Value(occurredAt),
     );
@@ -4629,6 +4670,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
       fromPocketId: serializer.fromJson<String>(json['fromPocketId']),
       toPocketId: serializer.fromJson<String>(json['toPocketId']),
       periodId: serializer.fromJson<String>(json['periodId']),
+      toPeriodId: serializer.fromJson<String?>(json['toPeriodId']),
       amount: serializer.fromJson<int>(json['amount']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
     );
@@ -4644,6 +4686,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
       'fromPocketId': serializer.toJson<String>(fromPocketId),
       'toPocketId': serializer.toJson<String>(toPocketId),
       'periodId': serializer.toJson<String>(periodId),
+      'toPeriodId': serializer.toJson<String?>(toPeriodId),
       'amount': serializer.toJson<int>(amount),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
     };
@@ -4657,6 +4700,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
     String? fromPocketId,
     String? toPocketId,
     String? periodId,
+    Value<String?> toPeriodId = const Value.absent(),
     int? amount,
     DateTime? occurredAt,
   }) => TransferRow(
@@ -4667,6 +4711,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
     fromPocketId: fromPocketId ?? this.fromPocketId,
     toPocketId: toPocketId ?? this.toPocketId,
     periodId: periodId ?? this.periodId,
+    toPeriodId: toPeriodId.present ? toPeriodId.value : this.toPeriodId,
     amount: amount ?? this.amount,
     occurredAt: occurredAt ?? this.occurredAt,
   );
@@ -4683,6 +4728,9 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
           ? data.toPocketId.value
           : this.toPocketId,
       periodId: data.periodId.present ? data.periodId.value : this.periodId,
+      toPeriodId: data.toPeriodId.present
+          ? data.toPeriodId.value
+          : this.toPeriodId,
       amount: data.amount.present ? data.amount.value : this.amount,
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
@@ -4700,6 +4748,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
           ..write('fromPocketId: $fromPocketId, ')
           ..write('toPocketId: $toPocketId, ')
           ..write('periodId: $periodId, ')
+          ..write('toPeriodId: $toPeriodId, ')
           ..write('amount: $amount, ')
           ..write('occurredAt: $occurredAt')
           ..write(')'))
@@ -4715,6 +4764,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
     fromPocketId,
     toPocketId,
     periodId,
+    toPeriodId,
     amount,
     occurredAt,
   );
@@ -4729,6 +4779,7 @@ class TransferRow extends DataClass implements Insertable<TransferRow> {
           other.fromPocketId == this.fromPocketId &&
           other.toPocketId == this.toPocketId &&
           other.periodId == this.periodId &&
+          other.toPeriodId == this.toPeriodId &&
           other.amount == this.amount &&
           other.occurredAt == this.occurredAt);
 }
@@ -4741,6 +4792,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
   final Value<String> fromPocketId;
   final Value<String> toPocketId;
   final Value<String> periodId;
+  final Value<String?> toPeriodId;
   final Value<int> amount;
   final Value<DateTime> occurredAt;
   final Value<int> rowid;
@@ -4752,6 +4804,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
     this.fromPocketId = const Value.absent(),
     this.toPocketId = const Value.absent(),
     this.periodId = const Value.absent(),
+    this.toPeriodId = const Value.absent(),
     this.amount = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4764,6 +4817,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
     required String fromPocketId,
     required String toPocketId,
     required String periodId,
+    this.toPeriodId = const Value.absent(),
     required int amount,
     required DateTime occurredAt,
     this.rowid = const Value.absent(),
@@ -4781,6 +4835,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
     Expression<String>? fromPocketId,
     Expression<String>? toPocketId,
     Expression<String>? periodId,
+    Expression<String>? toPeriodId,
     Expression<int>? amount,
     Expression<DateTime>? occurredAt,
     Expression<int>? rowid,
@@ -4793,6 +4848,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
       if (fromPocketId != null) 'from_pocket_id': fromPocketId,
       if (toPocketId != null) 'to_pocket_id': toPocketId,
       if (periodId != null) 'period_id': periodId,
+      if (toPeriodId != null) 'to_period_id': toPeriodId,
       if (amount != null) 'amount': amount,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (rowid != null) 'rowid': rowid,
@@ -4807,6 +4863,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
     Value<String>? fromPocketId,
     Value<String>? toPocketId,
     Value<String>? periodId,
+    Value<String?>? toPeriodId,
     Value<int>? amount,
     Value<DateTime>? occurredAt,
     Value<int>? rowid,
@@ -4819,6 +4876,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
       fromPocketId: fromPocketId ?? this.fromPocketId,
       toPocketId: toPocketId ?? this.toPocketId,
       periodId: periodId ?? this.periodId,
+      toPeriodId: toPeriodId ?? this.toPeriodId,
       amount: amount ?? this.amount,
       occurredAt: occurredAt ?? this.occurredAt,
       rowid: rowid ?? this.rowid,
@@ -4849,6 +4907,9 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
     if (periodId.present) {
       map['period_id'] = Variable<String>(periodId.value);
     }
+    if (toPeriodId.present) {
+      map['to_period_id'] = Variable<String>(toPeriodId.value);
+    }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
     }
@@ -4871,6 +4932,7 @@ class TransfersCompanion extends UpdateCompanion<TransferRow> {
           ..write('fromPocketId: $fromPocketId, ')
           ..write('toPocketId: $toPocketId, ')
           ..write('periodId: $periodId, ')
+          ..write('toPeriodId: $toPeriodId, ')
           ..write('amount: $amount, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('rowid: $rowid')
@@ -7437,6 +7499,27 @@ final class $$PeriodsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$TransfersTable, List<TransferRow>>
+  _incomingPeriodTransfersTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.transfers,
+        aliasName: 'periods__id__transfers__to_period_id',
+      );
+
+  $$TransfersTableProcessedTableManager get incomingPeriodTransfers {
+    final manager = $$TransfersTableTableManager(
+      $_db,
+      $_db.transfers,
+    ).filter((f) => f.toPeriodId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _incomingPeriodTransfersTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$IncomesTable, List<IncomeRow>> _incomesRefsTable(
     _$AppDatabase db,
   ) => MultiTypedResultKey.fromTable(
@@ -7569,6 +7652,31 @@ class $$PeriodsTableFilterComposer
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.transfers,
       getReferencedColumn: (t) => t.periodId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransfersTableFilterComposer(
+            $db: $db,
+            $table: $db.transfers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> incomingPeriodTransfers(
+    Expression<bool> Function($$TransfersTableFilterComposer f) f,
+  ) {
+    final $$TransfersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transfers,
+      getReferencedColumn: (t) => t.toPeriodId,
       builder:
           (
             joinBuilder, {
@@ -7783,6 +7891,31 @@ class $$PeriodsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> incomingPeriodTransfers<T extends Object>(
+    Expression<T> Function($$TransfersTableAnnotationComposer a) f,
+  ) {
+    final $$TransfersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.transfers,
+      getReferencedColumn: (t) => t.toPeriodId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransfersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transfers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> incomesRefs<T extends Object>(
     Expression<T> Function($$IncomesTableAnnotationComposer a) f,
   ) {
@@ -7826,6 +7959,7 @@ class $$PeriodsTableTableManager
             bool periodAllocationsRefs,
             bool expensesRefs,
             bool transfersRefs,
+            bool incomingPeriodTransfers,
             bool incomesRefs,
           })
         > {
@@ -7901,6 +8035,7 @@ class $$PeriodsTableTableManager
                 periodAllocationsRefs = false,
                 expensesRefs = false,
                 transfersRefs = false,
+                incomingPeriodTransfers = false,
                 incomesRefs = false,
               }) {
                 return PrefetchHooks(
@@ -7909,6 +8044,7 @@ class $$PeriodsTableTableManager
                     if (periodAllocationsRefs) db.periodAllocations,
                     if (expensesRefs) db.expenses,
                     if (transfersRefs) db.transfers,
+                    if (incomingPeriodTransfers) db.transfers,
                     if (incomesRefs) db.incomes,
                   ],
                   addJoins: null,
@@ -7977,6 +8113,27 @@ class $$PeriodsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (incomingPeriodTransfers)
+                        await $_getPrefetchedData<
+                          PeriodRow,
+                          $PeriodsTable,
+                          TransferRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeriodsTableReferences
+                              ._incomingPeriodTransfersTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeriodsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).incomingPeriodTransfers,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.toPeriodId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (incomesRefs)
                         await $_getPrefetchedData<
                           PeriodRow,
@@ -8022,6 +8179,7 @@ typedef $$PeriodsTableProcessedTableManager =
         bool periodAllocationsRefs,
         bool expensesRefs,
         bool transfersRefs,
+        bool incomingPeriodTransfers,
         bool incomesRefs,
       })
     >;
@@ -9509,6 +9667,7 @@ typedef $$TransfersTableCreateCompanionBuilder = TransfersCompanion Function({
   required String fromPocketId,
   required String toPocketId,
   required String periodId,
+  Value<String?> toPeriodId,
   required int amount,
   required DateTime occurredAt,
   Value<int> rowid,
@@ -9521,6 +9680,7 @@ typedef $$TransfersTableUpdateCompanionBuilder = TransfersCompanion Function({
   Value<String> fromPocketId,
   Value<String> toPocketId,
   Value<String> periodId,
+  Value<String?> toPeriodId,
   Value<int> amount,
   Value<DateTime> occurredAt,
   Value<int> rowid,
@@ -9575,6 +9735,23 @@ final class $$TransfersTableReferences
       $_db.periods,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_periodIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PeriodsTable _toPeriodIdTable(_$AppDatabase db) =>
+      db.periods.createAlias('transfers__to_period_id__periods__id');
+
+  $$PeriodsTableProcessedTableManager? get toPeriodId {
+    final $_column = $_itemColumn<String>('to_period_id');
+    if ($_column == null) return null;
+    final manager = $$PeriodsTableTableManager(
+      $_db,
+      $_db.periods,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toPeriodIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -9671,6 +9848,29 @@ class $$TransfersTableFilterComposer
     final $$PeriodsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.periodId,
+      referencedTable: $db.periods,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeriodsTableFilterComposer(
+            $db: $db,
+            $table: $db.periods,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PeriodsTableFilterComposer get toPeriodId {
+    final $$PeriodsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toPeriodId,
       referencedTable: $db.periods,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -9798,6 +9998,29 @@ class $$TransfersTableOrderingComposer
     );
     return composer;
   }
+
+  $$PeriodsTableOrderingComposer get toPeriodId {
+    final $$PeriodsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toPeriodId,
+      referencedTable: $db.periods,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeriodsTableOrderingComposer(
+            $db: $db,
+            $table: $db.periods,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransfersTableAnnotationComposer
@@ -9897,6 +10120,29 @@ class $$TransfersTableAnnotationComposer
     );
     return composer;
   }
+
+  $$PeriodsTableAnnotationComposer get toPeriodId {
+    final $$PeriodsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toPeriodId,
+      referencedTable: $db.periods,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeriodsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.periods,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransfersTableTableManager
@@ -9916,6 +10162,7 @@ class $$TransfersTableTableManager
             bool fromPocketId,
             bool toPocketId,
             bool periodId,
+            bool toPeriodId,
           })
         > {
   $$TransfersTableTableManager(_$AppDatabase db, $TransfersTable table)
@@ -9938,6 +10185,7 @@ class $$TransfersTableTableManager
                 Value<String> fromPocketId = const Value.absent(),
                 Value<String> toPocketId = const Value.absent(),
                 Value<String> periodId = const Value.absent(),
+                Value<String?> toPeriodId = const Value.absent(),
                 Value<int> amount = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -9949,6 +10197,7 @@ class $$TransfersTableTableManager
                 fromPocketId: fromPocketId,
                 toPocketId: toPocketId,
                 periodId: periodId,
+                toPeriodId: toPeriodId,
                 amount: amount,
                 occurredAt: occurredAt,
                 rowid: rowid,
@@ -9962,6 +10211,7 @@ class $$TransfersTableTableManager
                 required String fromPocketId,
                 required String toPocketId,
                 required String periodId,
+                Value<String?> toPeriodId = const Value.absent(),
                 required int amount,
                 required DateTime occurredAt,
                 Value<int> rowid = const Value.absent(),
@@ -9973,6 +10223,7 @@ class $$TransfersTableTableManager
                 fromPocketId: fromPocketId,
                 toPocketId: toPocketId,
                 periodId: periodId,
+                toPeriodId: toPeriodId,
                 amount: amount,
                 occurredAt: occurredAt,
                 rowid: rowid,
@@ -9986,7 +10237,12 @@ class $$TransfersTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({fromPocketId = false, toPocketId = false, periodId = false}) {
+              ({
+                fromPocketId = false,
+                toPocketId = false,
+                periodId = false,
+                toPeriodId = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [],
@@ -10039,6 +10295,17 @@ class $$TransfersTableTableManager
                                 .id,
                           ) as T;
                         }
+                        if (toPeriodId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.toPeriodId,
+                            referencedTable: $$TransfersTableReferences
+                                ._toPeriodIdTable(db),
+                            referencedColumn: $$TransfersTableReferences
+                                ._toPeriodIdTable(db)
+                                .id,
+                          ) as T;
+                        }
 
                         return state;
                       },
@@ -10067,6 +10334,7 @@ typedef $$TransfersTableProcessedTableManager =
         bool fromPocketId,
         bool toPocketId,
         bool periodId,
+        bool toPeriodId,
       })
     >;
 typedef $$IncomesTableCreateCompanionBuilder = IncomesCompanion Function({
