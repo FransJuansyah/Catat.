@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
+import 'data/receipt_scanner.dart';
 import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
 import 'features/expense/saved_screen.dart';
@@ -26,6 +27,9 @@ import 'features/pocket/pocket_detail_screen.dart';
 import 'features/pocket/pocket_edit_screen.dart';
 import 'features/pocket/pocket_settings_screen.dart';
 import 'features/pocket/transfer_screen.dart';
+import 'features/scan/scan_reading_screen.dart';
+import 'features/scan/scan_result_screen.dart';
+import 'features/scan/scan_screen.dart';
 
 final _router = GoRouter(
   initialLocation: '/',
@@ -87,16 +91,16 @@ final _router = GoRouter(
         ),
       ],
     ),
+    GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
     GoRoute(
-      path: '/scan',
-      builder: (_, _) => const PlaceholderScreen(
-        title: 'Scan struk',
-        designRef: '04',
-        dark: true,
-        showBack: true,
-        actionLabel: 'Ketik manual dulu',
-        actionRoute: '/catat',
-      ),
+      path: '/baca-struk',
+      builder: (_, state) =>
+          ScanReadingScreen(imagePath: state.extra! as String),
+    ),
+    GoRoute(
+      path: '/hasil-scan',
+      builder: (_, state) =>
+          ScanResultScreen(result: state.extra! as ScanResult),
     ),
     GoRoute(
       path: '/catat',

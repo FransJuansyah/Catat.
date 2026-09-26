@@ -7,6 +7,7 @@ import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
 import 'local/database.dart';
+import 'receipt_scanner.dart';
 import 'repositories/budget_repository.dart';
 
 /// Jam sistem. Di-override di test agar tanggal bisa dikontrol.
@@ -21,6 +22,11 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 final budgetRepositoryProvider = Provider<BudgetRepository>(
   (ref) =>
       BudgetRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
+/// Pembaca struk (ML Kit). Di-override di test.
+final receiptScannerProvider = Provider<ReceiptScanner>(
+  (ref) => MlKitReceiptScanner(ref.watch(clockProvider)),
 );
 
 /// Apakah onboarding (gaji + kantong) sudah selesai. Dipakai Splash.
