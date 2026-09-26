@@ -222,12 +222,19 @@ void main() {
     );
     expect(container.read(onboardingProvider).amountReady, isTrue);
     ctrl.setMonthlyEstimate(3000000);
-    await ctrl.finish();
+    await ctrl.finish(opening: 1000000);
 
     final settings = await db.select(db.salarySettings).getSingle();
     expect(settings.incomeMode, IncomeMode.irregular);
     expect(settings.monthlyEstimate, 3000000);
     expect(settings.incomeReminder, isTrue);
-    expect((await repo.loadHome()).remaining, 0);
+    // Saldo awal jadi saldo berjalan, dibagi 50/30/20, tapi bukan pemasukan.
+    final home = await repo.loadHome();
+    expect(home.remaining, 1000000);
+    expect(
+      [for (final p in home.pockets) p.balance.remaining],
+      [500000, 300000, 200000],
+    );
+    expect(home.monthIncome, 0);
   });
 }

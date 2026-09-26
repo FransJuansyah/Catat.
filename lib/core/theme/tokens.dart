@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../domain/templates.dart';
+import '../../domain/types.dart';
+
 /// Token desain dari design/tokens.json. Jangan hardcode warna/ukuran di widget.
 abstract final class AppColors {
   static const ink = Color(0xFF0E0E10);
@@ -123,13 +126,19 @@ abstract final class PocketVisuals {
       Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
 
   /// Palet yang bisa dipilih user saat kustomisasi (layar 21).
-  static const palette = [
-    Color(0xFF6D5DFC),
-    Color(0xFF12A36B),
-    Color(0xFFFF4F7B),
-    Color(0xFFFF8A00),
-    Color(0xFF0EA5E9),
-    Color(0xFFEAB308),
-    Color(0xFF0E0E10),
-  ];
+  static final palette = [for (final c in pocketPalette) Color(c)];
+
+  /// Warna & ikon tiap jenis kantong (tokens.json `pocket`), untuk pilihan
+  /// Jenis di layar 21.
+  static Color typeColor(PocketType type) => switch (type) {
+    PocketType.wajib => const Color(0xFF6D5DFC),
+    PocketType.darurat => const Color(0xFF12A36B),
+    PocketType.keinginan => const Color(0xFFFF4F7B),
+  };
+
+  static IconData typeIcon(PocketType type) => switch (type) {
+    PocketType.wajib => LucideIcons.house,
+    PocketType.darurat => LucideIcons.shield,
+    PocketType.keinginan => LucideIcons.sparkles,
+  };
 }

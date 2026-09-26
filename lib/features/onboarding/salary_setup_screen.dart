@@ -14,7 +14,7 @@ import '../../data/providers.dart';
 import '../../domain/payslip_parser.dart';
 import 'onboarding_widgets.dart';
 
-/// Layar 02 · Atur Gaji (langkah 3 dari 4, gaji bulanan).
+/// Layar 02 · Atur Gaji (langkah 3 dari 5, gaji bulanan).
 class SalarySetupScreen extends ConsumerWidget {
   const SalarySetupScreen({super.key});
 

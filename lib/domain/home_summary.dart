@@ -58,6 +58,7 @@ class HomeSummary {
     this.monthIncome = 0,
     this.dailySafe,
     this.dailySafeUntil,
+    this.opening,
   });
 
   final String userName;
@@ -86,6 +87,9 @@ class HomeSummary {
 
   /// Label batas jatah harian, mis. "Senin" atau "tgl 25".
   final String? dailySafeUntil;
+
+  /// Saldo awal saat baru daftar (layar 42), hanya di periode pertama.
+  final int? opening;
 
   int get remaining => pockets.fold<int>(0, (s, p) => s + p.balance.remaining);
 }

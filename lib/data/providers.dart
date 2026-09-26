@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../domain/home_summary.dart';
+import '../domain/income_schedule.dart';
 import '../domain/pocket_config.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
@@ -157,8 +159,9 @@ class OnboardingController extends Notifier<OnboardingDraft> {
   void setReminder(bool v) => state = state.copyWith(reminder: v);
   void setTemplate(PocketTemplate t) => state = state.copyWith(template: t);
 
-  /// Simpan semuanya & buat periode pertama.
-  Future<void> finish() async {
+  /// Simpan semuanya & buat periode pertama. [opening] = uang user sekarang
+  /// (layar 42), itu yang dibagi ke kantong di periode pertama.
+  Future<void> finish({required int opening}) async {
     final repo = ref.read(budgetRepositoryProvider);
     final d = state;
     await repo.setupBudget(
@@ -172,12 +175,10 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       incomeReminder: d.mode == IncomeMode.irregular && d.reminder,
       template: d.template,
     );
-    final period = await repo.ensureCurrentPeriod();
-    // Pemasukan pertama baru saja diisi user, jadi langsung dipakai walau
-    // "Tambah otomatis" mati (periode berikutnya diisi manual).
-    if (d.mode != IncomeMode.irregular && !d.autoAdd) {
-      await repo.setPeriodSalary(period.id, d.amount);
-    }
+    await repo.ensureCurrentPeriod();
+    // Jarang ada yang daftar pas hari gajian: periode pertama dibagi dari
+    // uang aslinya sekarang. Gajian berikutnya baru dibagi normal.
+    await repo.setOpeningBalance(opening);
     ref.invalidate(isSetUpProvider);
   }
 }
@@ -189,12 +190,15 @@ final onboardingProvider =
 
 // ---------------------------------------------------------- atur kantong
 
-/// Isian layar Atur Kantong (20–22) sebelum disimpan.
+/// Isian layar Atur Kantong (20–22) atau Bikin Kantong Sendiri (43) sebelum
+/// disimpan.
 class PocketDraft {
   const PocketDraft({
     required this.original,
     required this.current,
     this.lastEditedId,
+    this.moves = const {},
+    this.onboarding = false,
   });
 
   final PocketSetup original;
@@ -203,34 +207,119 @@ class PocketDraft {
   /// Kantong terakhir diubah → disorot kalau alokasi belum pas (layar 23).
   final String? lastEditedId;
 
-  bool get dirty => !listEquals(original.pockets, current.pockets);
+  /// Kantong tersimpan yang dihapus → kantong tujuan saldo & riwayatnya.
+  final Map<String, String> moves;
+
+  /// Masih daftar (layar 43): disimpan ke isian onboarding, bukan ke DB.
+  final bool onboarding;
+
+  bool get dirty =>
+      moves.isNotEmpty || !listEquals(original.pockets, current.pockets);
 
   PocketConfig pocket(String id) =>
       current.pockets.firstWhere((p) => p.id == id);
 
-  PocketDraft copyWith({PocketSetup? current, String? lastEditedId}) =>
-      PocketDraft(
-        original: original,
-        current: current ?? this.current,
-        lastEditedId: lastEditedId ?? this.lastEditedId,
-      );
+  /// Kantong belum pernah tersimpan (baru ditambah / masih daftar), jadi
+  /// belum punya saldo & catatan.
+  bool isNew(String id) =>
+      onboarding || !original.pockets.any((p) => p.id == id);
+
+  PocketDraft copyWith({
+    PocketSetup? current,
+    String? lastEditedId,
+    Map<String, String>? moves,
+  }) => PocketDraft(
+    original: original,
+    current: current ?? this.current,
+    lastEditedId: lastEditedId ?? this.lastEditedId,
+    moves: moves ?? this.moves,
+    onboarding: onboarding,
+  );
 }
 
 class PocketDraftController extends AsyncNotifier<PocketDraft> {
   @override
   Future<PocketDraft> build() async {
-    final setup = await ref.read(budgetRepositoryProvider).loadPocketSetup();
+    final repo = ref.read(budgetRepositoryProvider);
+    if (!await repo.isSetUp()) {
+      final setup = _onboardingSetup(ref.read(onboardingProvider));
+      return PocketDraft(original: setup, current: setup, onboarding: true);
+    }
+    final setup = await repo.loadPocketSetup();
     return PocketDraft(original: setup, current: setup);
   }
 
-  void _setPockets(List<PocketConfig> pockets, {String? edited}) {
+  /// Kantong dari template yang sedang dipilih di onboarding (layar 19 → 43).
+  static PocketSetup _onboardingSetup(OnboardingDraft d) {
+    final schedule = IncomeSchedule(
+      mode: d.mode,
+      frequency: d.frequency,
+      payday: d.payday,
+      weekday: d.weekday,
+    );
+    return PocketSetup(
+      incomeMode: d.mode,
+      base: d.mode == IncomeMode.irregular ? 0 : d.amount,
+      perNoun: schedule.perNoun,
+      pockets: [
+        for (final s in d.template.pockets)
+          PocketConfig(
+            id: const Uuid().v4(),
+            type: s.type,
+            name: s.name,
+            iconKey: s.iconKey,
+            color: s.color,
+            percent: s.percent,
+          ),
+      ],
+    );
+  }
+
+  void _setPockets(
+    List<PocketConfig> pockets, {
+    String? edited,
+    Map<String, String>? moves,
+  }) {
     final d = state.value;
     if (d == null) return;
     state = AsyncData(
       d.copyWith(
         current: d.current.copyWith(pockets: pockets),
         lastEditedId: edited,
+        moves: moves,
       ),
+    );
+  }
+
+  /// "Tambah kantong" (layar 20/43). Mengembalikan id kantong baru, atau
+  /// null kalau sudah [maxPockets].
+  String? addPocket() {
+    final d = state.value;
+    if (d == null || !d.current.canAdd) return null;
+    final pocket = newPocket(
+      const Uuid().v4(),
+      d.current.pockets,
+      icons: pocketIconChoices,
+      colors: pocketPalette,
+    );
+    _setPockets([...d.current.pockets, pocket], edited: pocket.id);
+    return pocket.id;
+  }
+
+  /// Hapus kantong (layar 45): jatahnya pindah ke [targetId]; kalau sudah
+  /// tersimpan, saldo & riwayatnya ikut pindah saat "Simpan".
+  void removePocket(String id, String targetId) {
+    final d = state.value;
+    if (d == null || !d.current.canRemove) return;
+    final moves = {
+      for (final MapEntry(:key, :value) in d.moves.entries)
+        key: value == id ? targetId : value,
+      if (!d.isNew(id)) id: targetId,
+    };
+    _setPockets(
+      withoutPocket(d.current.pockets, id, targetId, d.current.base),
+      edited: targetId,
+      moves: moves,
     );
   }
 
@@ -272,8 +361,24 @@ class PocketDraftController extends AsyncNotifier<PocketDraft> {
   Future<void> save() async {
     final d = state.value;
     if (d == null) return;
-    await ref.read(budgetRepositoryProvider).savePockets(d.current.pockets);
-    state = AsyncData(PocketDraft(original: d.current, current: d.current));
+    if (d.onboarding) {
+      ref
+          .read(onboardingProvider.notifier)
+          .setTemplate(
+            PocketTemplates.custom(d.current.pockets, d.current.base),
+          );
+    } else {
+      await ref
+          .read(budgetRepositoryProvider)
+          .savePockets(d.current.pockets, moves: d.moves);
+    }
+    state = AsyncData(
+      PocketDraft(
+        original: d.current,
+        current: d.current,
+        onboarding: d.onboarding,
+      ),
+    );
   }
 }
 

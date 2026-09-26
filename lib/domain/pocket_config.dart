@@ -61,6 +61,7 @@ class PocketConfig {
       : (nominal * 100 / base).round();
 
   PocketConfig copyWith({
+    PocketType? type,
     String? name,
     String? iconKey,
     int? color,
@@ -73,7 +74,7 @@ class PocketConfig {
     bool? rolloverToEmergency,
   }) => PocketConfig(
     id: id,
-    type: type,
+    type: type ?? this.type,
     name: name ?? this.name,
     iconKey: iconKey ?? this.iconKey,
     color: color ?? this.color,
@@ -98,6 +99,7 @@ class PocketConfig {
   bool operator ==(Object other) =>
       other is PocketConfig &&
       other.id == id &&
+      other.type == type &&
       other.name == name &&
       other.iconKey == iconKey &&
       other.color == color &&
@@ -112,6 +114,7 @@ class PocketConfig {
   @override
   int get hashCode => Object.hash(
     id,
+    type,
     name,
     iconKey,
     color,
@@ -125,6 +128,65 @@ class PocketConfig {
   );
 }
 
+/// Batas jumlah kantong (keputusan 27 Sep 2026): cukup fleksibel tapi
+/// Beranda & laporan tetap ringkas.
+const minPockets = 2;
+const maxPockets = 6;
+
+/// Kantong baru (layar 20/43 "Tambah kantong"): jatah 0, ikon & warna yang
+/// belum dipakai kantong lain supaya gampang dibedakan.
+PocketConfig newPocket(
+  String id,
+  List<PocketConfig> existing, {
+  required List<String> icons,
+  required List<int> colors,
+}) {
+  final usedIcons = {for (final p in existing) p.iconKey};
+  final usedColors = {for (final p in existing) p.color};
+  final allNominal =
+      existing.isNotEmpty &&
+      existing.every((p) => p.mode == AllocationMode.nominal);
+  return PocketConfig(
+    id: id,
+    type: PocketType.keinginan,
+    name: 'Kantong ${existing.length + 1}',
+    iconKey: icons.firstWhere(
+      (i) => !usedIcons.contains(i),
+      orElse: () => icons.first,
+    ),
+    color: colors.firstWhere(
+      (c) => !usedColors.contains(c),
+      orElse: () => colors.first,
+    ),
+    mode: allNominal ? AllocationMode.nominal : AllocationMode.percent,
+  );
+}
+
+/// Hapus kantong [removedId] dari daftar; jatahnya pindah ke [targetId]
+/// supaya total tetap pas (layar 45). [base] dipakai kalau satuannya beda.
+List<PocketConfig> withoutPocket(
+  List<PocketConfig> pockets,
+  String removedId,
+  String targetId,
+  int base,
+) {
+  if (removedId == targetId) {
+    throw ArgumentError.value(targetId, 'targetId', 'kantong sama');
+  }
+  final removed = pockets.firstWhere((p) => p.id == removedId);
+  return [
+    for (final p in pockets)
+      if (p.id == targetId)
+        p.mode == AllocationMode.nominal
+            ? p.copyWith(nominal: p.nominal + removed.amountOf(base))
+            : p.copyWith(
+                percent: (p.percent + removed.percentOf(base)).clamp(0, 100),
+              )
+      else if (p.id != removedId)
+        p,
+  ];
+}
+
 /// Data layar Atur Kantong (20).
 class PocketSetup {
   const PocketSetup({
@@ -132,9 +194,13 @@ class PocketSetup {
     required this.base,
     required this.perNoun,
     required this.pockets,
+    this.fromOpening = false,
   });
 
   final IncomeMode incomeMode;
+
+  /// [base] = saldo awal periode pertama (layar 42), bukan gaji / uang jajan.
+  final bool fromOpening;
 
   /// Pemasukan per periode yang dibagi (gaji / uang jajan). Penghasilan tidak
   /// tetap: perkiraan sebulan (boleh 0), hanya untuk tampilan.
@@ -164,11 +230,15 @@ class PocketSetup {
             ),
         ]);
 
+  bool get canAdd => pockets.length < maxPockets;
+  bool get canRemove => pockets.length > minPockets;
+
   PocketSetup copyWith({List<PocketConfig>? pockets}) => PocketSetup(
     incomeMode: incomeMode,
     base: base,
     perNoun: perNoun,
     pockets: pockets ?? this.pockets,
+    fromOpening: fromOpening,
   );
 }
 

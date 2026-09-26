@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Layar Atur Kantong (20–25) bisa digambar di ukuran HP tanpa error layout.
 void main() {
@@ -94,8 +95,52 @@ void main() {
     final id = await lastPocketId();
     await pump(tester, PocketEditScreen(pocketId: id));
     expect(tester.takeException(), isNull);
-    expect(find.text('Tipe: Keinginan'), findsOneWidget);
+    // Preview + pilihan Jenis.
+    expect(find.text('Keinginan'), findsWidgets);
+    expect(find.text('Jenis'), findsOneWidget);
     expect(find.text('Jatah & rentang'), findsOneWidget);
+
+    // Layar 45: hapus → pilih kantong tujuan.
+    await tester.tap(find.byIcon(LucideIcons.trash2));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Keinginan?'), findsOneWidget);
+    expect(find.text('Sisa Rp 1.950.000 dipindah ke:'), findsOneWidget);
+    expect(find.text('Hapus & pindahin'), findsOneWidget);
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('20 Tambah kantong sampai 6', (tester) async {
+    final c = await pump(tester, const PocketSettingsScreen());
+    expect(find.text('Tambah kantong'), findsOneWidget);
+    for (var i = 0; i < 3; i++) {
+      c.read(pocketDraftProvider.notifier).addPocket();
+    }
+    await tester.pump();
+    expect(c.read(pocketDraftProvider).value!.current.pockets, hasLength(6));
+    expect(find.text('Tambah kantong'), findsNothing);
+    expect(c.read(pocketDraftProvider.notifier).addPocket(), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('43 Bikin Kantong Sendiri saat daftar', (tester) async {
+    // DB baru, belum daftar → draft dari template onboarding.
+    await db.close();
+    db = AppDatabase(
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
+    );
+    final c = await pump(tester, const PocketSettingsScreen());
+    expect(c.read(pocketDraftProvider).value!.onboarding, isTrue);
+    expect(find.text('Bikin Sendiri'), findsOneWidget);
+    expect(find.text('3 kantong'), findsOneWidget);
+    expect(find.text('Maks 6'), findsOneWidget);
+    expect(find.text('Pakai kantong ini'), findsOneWidget);
+    expect(find.text('Persen'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('22 Atur Jatah & Rentang', (tester) async {

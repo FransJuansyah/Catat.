@@ -203,7 +203,9 @@ class _BalanceHero extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                allowance
+                summary.opening != null
+                    ? 'dari saldo awal ${rupiah(summary.opening!)}'
+                    : allowance
                     ? 'dari ${rupiah(summary.salary)} / ${summary.perNoun}'
                     : 'dari gaji ${rupiah(summary.salary)}',
                 style: AppText.style(13, AppText.w500, color: AppColors.faint),

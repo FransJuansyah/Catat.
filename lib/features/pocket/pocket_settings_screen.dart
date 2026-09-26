@@ -17,7 +17,9 @@ import '../../domain/types.dart';
 /// Salmon untuk angka/label "lebih" di kartu gelap (layar 23).
 const _warn = Color(0xFFFF8A80);
 
-/// Layar 20 · Atur Kantong (+ layar 23 saat alokasi belum pas).
+/// Layar 20 · Atur Kantong (+ layar 23 saat alokasi belum pas). Saat masih
+/// daftar jadi layar 43 · Bikin Kantong Sendiri: hasilnya dipakai onboarding
+/// lalu lanjut ke 42 (saldo awal).
 class PocketSettingsScreen extends ConsumerStatefulWidget {
   const PocketSettingsScreen({super.key});
 
@@ -30,7 +32,7 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
   bool _saving = false;
 
   Future<void> _save(PocketDraft draft) async {
-    if (!draft.dirty) {
+    if (!draft.dirty && !draft.onboarding) {
       context.pop();
       return;
     }
@@ -38,6 +40,11 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
     try {
       await ref.read(pocketDraftProvider.notifier).save();
       if (!mounted) return;
+      if (draft.onboarding) {
+        setState(() => _saving = false);
+        context.push('/uang-sekarang');
+        return;
+      }
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Kantong disimpan')));
       context.pop();
@@ -85,7 +92,9 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
                   ),
                   children: [
                     AppTopBar(
-                      title: 'Atur Kantong',
+                      title: draft?.onboarding ?? false
+                          ? 'Bikin Sendiri'
+                          : 'Atur Kantong',
                       onLeading: () => Navigator.maybePop(context),
                     ),
                     if (draft != null) ..._body(draft),
@@ -100,7 +109,9 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
                   16,
                 ),
                 child: AppButton(
-                  label: 'Simpan',
+                  label: draft?.onboarding ?? false
+                      ? 'Pakai kantong ini'
+                      : 'Simpan',
                   loading: _saving,
                   onPressed: draft != null && draft.current.check.isValid
                       ? () => _save(draft)
@@ -124,7 +135,7 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
     return [
       const SizedBox(height: 20),
       _AllocationHero(setup: setup),
-      if (!setup.isRunning && setup.base > 0) ...[
+      if (!draft.onboarding && !setup.isRunning && setup.base > 0) ...[
         const SizedBox(height: 16),
         SegmentedTabs<AllocationMode>(
           items: const [
@@ -140,12 +151,16 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
         children: [
           Expanded(
             child: Text(
-              'Kantong kamu',
+              draft.onboarding
+                  ? '${setup.pockets.length} kantong'
+                  : 'Kantong kamu',
               style: AppText.style(17, AppText.w800, spacingPercent: -1),
             ),
           ),
           Text(
-            'Tahan & geser buat ngurutin',
+            draft.onboarding
+                ? 'Maks $maxPockets'
+                : 'Tahan & geser buat ngurutin',
             style: AppText.style(12, AppText.w700, color: AppColors.muted),
           ),
         ],
@@ -155,6 +170,7 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: setup.pockets.length,
+        buildDefaultDragHandles: !draft.onboarding,
         onReorderItem: ctrl.reorder,
         proxyDecorator: (child, _, _) =>
             Material(color: Colors.transparent, elevation: 6, child: child),
@@ -167,17 +183,29 @@ class _PocketSettingsScreenState extends ConsumerState<PocketSettingsScreen> {
               pocket: p,
               setup: setup,
               showNominal: nominal,
+              showGrip: !draft.onboarding,
               error: !check.isValid && draft.lastEditedId == p.id,
               onTap: () => context.push('/edit-kantong/${p.id}'),
             ),
           );
         },
       ),
-      const SizedBox(height: 4),
-      if (check.isValid)
-        _InfoCard(running: setup.isRunning)
-      else
-        _WarningCard(text: _warningText(setup), onFix: ctrl.autoBalance),
+      if (setup.canAdd) ...[
+        DashedAddCard(
+          title: 'Tambah kantong',
+          subtitle: 'Bisa $minPockets sampai $maxPockets kantong',
+          onTap: () {
+            final id = ctrl.addPocket();
+            if (id != null) context.push('/edit-kantong/$id');
+          },
+        ),
+        const SizedBox(height: 14),
+      ] else
+        const SizedBox(height: 4),
+      if (!check.isValid)
+        _WarningCard(text: _warningText(setup), onFix: ctrl.autoBalance)
+      else if (!draft.onboarding)
+        _InfoCard(running: setup.isRunning),
     ];
   }
 
@@ -205,6 +233,7 @@ class _AllocationHero extends StatelessWidget {
     final valid = check.isValid;
     final percent = check.displayPercent;
     final label = switch (setup.incomeMode) {
+      _ when setup.fromOpening => 'Dari saldo awal ${rupiah(setup.base)}',
       IncomeMode.irregular => 'Dari tiap duit masuk',
       IncomeMode.allowance =>
         'Dari uang jajan ${rupiah(setup.base)} / ${setup.perNoun}',
@@ -312,11 +341,15 @@ class _PocketRow extends StatelessWidget {
     required this.showNominal,
     required this.error,
     required this.onTap,
+    this.showGrip = true,
   });
 
   final PocketConfig pocket;
   final PocketSetup setup;
   final bool showNominal;
+
+  /// Drag handle; tidak ada di layar 43.
+  final bool showGrip;
   final bool error;
   final VoidCallback onTap;
 
@@ -342,15 +375,17 @@ class _PocketRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 14, 12, 14),
+          padding: EdgeInsets.fromLTRB(showGrip ? 10 : 14, 14, 12, 14),
           child: Row(
             children: [
-              const Icon(
-                LucideIcons.gripVertical,
-                size: 18,
-                color: AppColors.faint,
-              ),
-              const SizedBox(width: 6),
+              if (showGrip) ...[
+                const Icon(
+                  LucideIcons.gripVertical,
+                  size: 18,
+                  color: AppColors.faint,
+                ),
+                const SizedBox(width: 6),
+              ],
               IconBadge(
                 icon: PocketVisuals.icon(pocket.iconKey),
                 background: PocketVisuals.soft(color),
@@ -438,7 +473,7 @@ class _InfoCard extends StatelessWidget {
             child: Text(
               running
                   ? 'Nama, ikon, warna & persen bebas kamu atur. Aturan baru dipakai buat duit masuk berikutnya.'
-                  : 'Nama, ikon, warna & jatah bebas kamu atur. Tipe kantong tetap dipakai buat laporan.',
+                  : 'Nama, ikon, warna, jenis & jatah bebas kamu atur.',
               style: AppText.style(
                 13,
                 AppText.w700,

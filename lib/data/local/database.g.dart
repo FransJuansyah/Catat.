@@ -2111,6 +2111,17 @@ class $PeriodsTable extends Periods with TableInfo<$PeriodsTable, PeriodRow> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _openingMeta = const VerificationMeta(
+    'opening',
+  );
+  @override
+  late final GeneratedColumn<int> opening = GeneratedColumn<int>(
+    'opening',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2122,6 +2133,7 @@ class $PeriodsTable extends Periods with TableInfo<$PeriodsTable, PeriodRow> {
     salary,
     autoCreated,
     celebrated,
+    opening,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2197,6 +2209,12 @@ class $PeriodsTable extends Periods with TableInfo<$PeriodsTable, PeriodRow> {
         celebrated.isAcceptableOrUnknown(data['celebrated']!, _celebratedMeta),
       );
     }
+    if (data.containsKey('opening')) {
+      context.handle(
+        _openingMeta,
+        opening.isAcceptableOrUnknown(data['opening']!, _openingMeta),
+      );
+    }
     return context;
   }
 
@@ -2246,6 +2264,10 @@ class $PeriodsTable extends Periods with TableInfo<$PeriodsTable, PeriodRow> {
         DriftSqlType.bool,
         data['${effectivePrefix}celebrated'],
       )!,
+      opening: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}opening'],
+      ),
     );
   }
 
@@ -2267,6 +2289,10 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
 
   /// Layar "Gajian masuk!" (18) sudah ditampilkan untuk periode ini.
   final bool celebrated;
+
+  /// Saldo awal user saat baru daftar (layar 42). Diisi → jatah kantong
+  /// periode ini dibagi dari angka ini, bukan dari [salary].
+  final int? opening;
   const PeriodRow({
     required this.id,
     required this.createdAt,
@@ -2277,6 +2303,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
     required this.salary,
     required this.autoCreated,
     required this.celebrated,
+    this.opening,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2292,6 +2319,9 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
     map['salary'] = Variable<int>(salary);
     map['auto_created'] = Variable<bool>(autoCreated);
     map['celebrated'] = Variable<bool>(celebrated);
+    if (!nullToAbsent || opening != null) {
+      map['opening'] = Variable<int>(opening);
+    }
     return map;
   }
 
@@ -2308,6 +2338,9 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
       salary: Value(salary),
       autoCreated: Value(autoCreated),
       celebrated: Value(celebrated),
+      opening: opening == null && nullToAbsent
+          ? const Value.absent()
+          : Value(opening),
     );
   }
 
@@ -2326,6 +2359,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
       salary: serializer.fromJson<int>(json['salary']),
       autoCreated: serializer.fromJson<bool>(json['autoCreated']),
       celebrated: serializer.fromJson<bool>(json['celebrated']),
+      opening: serializer.fromJson<int?>(json['opening']),
     );
   }
   @override
@@ -2341,6 +2375,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
       'salary': serializer.toJson<int>(salary),
       'autoCreated': serializer.toJson<bool>(autoCreated),
       'celebrated': serializer.toJson<bool>(celebrated),
+      'opening': serializer.toJson<int?>(opening),
     };
   }
 
@@ -2354,6 +2389,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
     int? salary,
     bool? autoCreated,
     bool? celebrated,
+    Value<int?> opening = const Value.absent(),
   }) => PeriodRow(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -2364,6 +2400,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
     salary: salary ?? this.salary,
     autoCreated: autoCreated ?? this.autoCreated,
     celebrated: celebrated ?? this.celebrated,
+    opening: opening.present ? opening.value : this.opening,
   );
   PeriodRow copyWithCompanion(PeriodsCompanion data) {
     return PeriodRow(
@@ -2380,6 +2417,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
       celebrated: data.celebrated.present
           ? data.celebrated.value
           : this.celebrated,
+      opening: data.opening.present ? data.opening.value : this.opening,
     );
   }
 
@@ -2394,7 +2432,8 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
           ..write('endDate: $endDate, ')
           ..write('salary: $salary, ')
           ..write('autoCreated: $autoCreated, ')
-          ..write('celebrated: $celebrated')
+          ..write('celebrated: $celebrated, ')
+          ..write('opening: $opening')
           ..write(')'))
         .toString();
   }
@@ -2410,6 +2449,7 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
     salary,
     autoCreated,
     celebrated,
+    opening,
   );
   @override
   bool operator ==(Object other) =>
@@ -2423,7 +2463,8 @@ class PeriodRow extends DataClass implements Insertable<PeriodRow> {
           other.endDate == this.endDate &&
           other.salary == this.salary &&
           other.autoCreated == this.autoCreated &&
-          other.celebrated == this.celebrated);
+          other.celebrated == this.celebrated &&
+          other.opening == this.opening);
 }
 
 class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
@@ -2436,6 +2477,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
   final Value<int> salary;
   final Value<bool> autoCreated;
   final Value<bool> celebrated;
+  final Value<int?> opening;
   final Value<int> rowid;
   const PeriodsCompanion({
     this.id = const Value.absent(),
@@ -2447,6 +2489,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
     this.salary = const Value.absent(),
     this.autoCreated = const Value.absent(),
     this.celebrated = const Value.absent(),
+    this.opening = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PeriodsCompanion.insert({
@@ -2459,6 +2502,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
     required int salary,
     this.autoCreated = const Value.absent(),
     this.celebrated = const Value.absent(),
+    this.opening = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        startDate = Value(startDate),
@@ -2474,6 +2518,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
     Expression<int>? salary,
     Expression<bool>? autoCreated,
     Expression<bool>? celebrated,
+    Expression<int>? opening,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2486,6 +2531,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
       if (salary != null) 'salary': salary,
       if (autoCreated != null) 'auto_created': autoCreated,
       if (celebrated != null) 'celebrated': celebrated,
+      if (opening != null) 'opening': opening,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2500,6 +2546,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
     Value<int>? salary,
     Value<bool>? autoCreated,
     Value<bool>? celebrated,
+    Value<int?>? opening,
     Value<int>? rowid,
   }) {
     return PeriodsCompanion(
@@ -2512,6 +2559,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
       salary: salary ?? this.salary,
       autoCreated: autoCreated ?? this.autoCreated,
       celebrated: celebrated ?? this.celebrated,
+      opening: opening ?? this.opening,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2546,6 +2594,9 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
     if (celebrated.present) {
       map['celebrated'] = Variable<bool>(celebrated.value);
     }
+    if (opening.present) {
+      map['opening'] = Variable<int>(opening.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2564,6 +2615,7 @@ class PeriodsCompanion extends UpdateCompanion<PeriodRow> {
           ..write('salary: $salary, ')
           ..write('autoCreated: $autoCreated, ')
           ..write('celebrated: $celebrated, ')
+          ..write('opening: $opening, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7423,6 +7475,7 @@ typedef $$PeriodsTableCreateCompanionBuilder = PeriodsCompanion Function({
   required int salary,
   Value<bool> autoCreated,
   Value<bool> celebrated,
+  Value<int?> opening,
   Value<int> rowid,
 });
 typedef $$PeriodsTableUpdateCompanionBuilder = PeriodsCompanion Function({
@@ -7435,6 +7488,7 @@ typedef $$PeriodsTableUpdateCompanionBuilder = PeriodsCompanion Function({
   Value<int> salary,
   Value<bool> autoCreated,
   Value<bool> celebrated,
+  Value<int?> opening,
   Value<int> rowid,
 });
 
@@ -7591,6 +7645,11 @@ class $$PeriodsTableFilterComposer
 
   ColumnFilters<bool> get celebrated => $composableBuilder(
     column: $table.celebrated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get opening => $composableBuilder(
+    column: $table.opening,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7773,6 +7832,11 @@ class $$PeriodsTableOrderingComposer
     column: $table.celebrated,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get opening => $composableBuilder(
+    column: $table.opening,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PeriodsTableAnnotationComposer
@@ -7814,6 +7878,9 @@ class $$PeriodsTableAnnotationComposer
     column: $table.celebrated,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get opening =>
+      $composableBuilder(column: $table.opening, builder: (column) => column);
 
   Expression<T> periodAllocationsRefs<T extends Object>(
     Expression<T> Function($$PeriodAllocationsTableAnnotationComposer a) f,
@@ -7985,6 +8052,7 @@ class $$PeriodsTableTableManager
                 Value<int> salary = const Value.absent(),
                 Value<bool> autoCreated = const Value.absent(),
                 Value<bool> celebrated = const Value.absent(),
+                Value<int?> opening = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PeriodsCompanion(
                 id: id,
@@ -7996,6 +8064,7 @@ class $$PeriodsTableTableManager
                 salary: salary,
                 autoCreated: autoCreated,
                 celebrated: celebrated,
+                opening: opening,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8009,6 +8078,7 @@ class $$PeriodsTableTableManager
                 required int salary,
                 Value<bool> autoCreated = const Value.absent(),
                 Value<bool> celebrated = const Value.absent(),
+                Value<int?> opening = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PeriodsCompanion.insert(
                 id: id,
@@ -8020,6 +8090,7 @@ class $$PeriodsTableTableManager
                 salary: salary,
                 autoCreated: autoCreated,
                 celebrated: celebrated,
+                opening: opening,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

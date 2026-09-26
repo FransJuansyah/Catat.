@@ -8,33 +8,17 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../core/widgets/pocket_chip.dart';
 import '../../data/providers.dart';
 import '../../domain/pocket_config.dart';
-
-/// Ikon yang bisa dipilih untuk kantong (4 kolom).
-const _iconChoices = [
-  'house',
-  'shield',
-  'sparkles',
-  'coffee',
-  'food',
-  'piggy',
-  'plane',
-  'gamepad',
-  'music',
-  'gift',
-  'heart',
-  'shirt',
-  'bag',
-  'car',
-  'phone',
-  'film',
-];
+import '../../domain/templates.dart';
+import '../../domain/types.dart';
 
 const _maxName = 20;
 
-/// Layar 21 · Edit Kantong (nama, ikon, warna). Perubahan masuk ke draft
-/// Atur Kantong (layar 20) dan baru tersimpan saat "Simpan" di sana.
+/// Layar 21 · Edit Kantong (nama, ikon, warna, jenis) + hapus (layar 45).
+/// Perubahan masuk ke draft Atur Kantong (layar 20) / Bikin Sendiri (43) dan
+/// baru tersimpan saat "Simpan" di sana.
 class PocketEditScreen extends ConsumerStatefulWidget {
   const PocketEditScreen({super.key, required this.pocketId});
 
@@ -49,6 +33,7 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
   final _focus = FocusNode();
   String? _iconKey;
   int? _color;
+  PocketType? _type;
 
   @override
   void initState() {
@@ -69,6 +54,7 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
     if (_iconKey != null) return;
     _iconKey = p.iconKey;
     _color = p.color;
+    _type = p.type;
     _name.text = p.name;
   }
 
@@ -78,6 +64,7 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
         .read(pocketDraftProvider.notifier)
         .updatePocket(
           p.copyWith(
+            type: _type,
             name: name.isEmpty ? null : name,
             iconKey: _iconKey,
             color: _color,
@@ -114,7 +101,17 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
                     16,
                   ),
                   children: [
-                    const AppTopBar(title: 'Edit Kantong'),
+                    AppTopBar(
+                      title: 'Edit Kantong',
+                      trailingIcon: LucideIcons.trash2,
+                      trailingColor: AppColors.danger,
+                      onTrailing:
+                          pocket != null &&
+                              draft != null &&
+                              draft.current.canRemove
+                          ? () => _confirmRemove(pocket, draft)
+                          : null,
+                    ),
                     if (pocket != null && draft != null) ...[
                       const SizedBox(height: 20),
                       _preview(pocket),
@@ -127,6 +124,9 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
                       const SizedBox(height: 18),
                       _label('Warna'),
                       _colorRow(),
+                      const SizedBox(height: 18),
+                      _label('Jenis'),
+                      _typeRow(),
                       const SizedBox(height: 18),
                       _budgetRow(pocket, draft.current),
                     ],
@@ -197,7 +197,7 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Tipe: ${pocketTypeLabel(pocket.type)}',
+                  pocketTypeLabel(_type!),
                   style: AppText.style(13, AppText.w700, color: color),
                 ),
               ],
@@ -267,7 +267,7 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
       crossAxisSpacing: 8,
       childAspectRatio: 1.55,
       children: [
-        for (final key in _iconChoices)
+        for (final key in pocketIconChoices)
           Material(
             color: key == _iconKey ? PocketVisuals.soft(color) : AppColors.card,
             shape: RoundedRectangleBorder(
@@ -328,6 +328,67 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
     );
   }
 
+  /// Jenis dipakai buat tebak kantong saat scan, peringatan dana darurat &
+  /// laporan.
+  Widget _typeRow() {
+    return Row(
+      children: [
+        for (final (i, t) in PocketType.values.indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: PocketChip.raw(
+              label: pocketTypeLabel(t),
+              icon: PocketVisuals.typeIcon(t),
+              color: PocketVisuals.typeColor(t),
+              selected: t == _type,
+              onTap: () {
+                _focus.unfocus();
+                setState(() => _type = t);
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Layar 45: pilih kantong tujuan sisa saldo & catatan, lalu hapus.
+  Future<void> _confirmRemove(PocketConfig pocket, PocketDraft draft) async {
+    _focus.unfocus();
+    final others = [
+      for (final p in draft.current.pockets)
+        if (p.id != pocket.id) p,
+    ];
+    final usage = draft.isNew(pocket.id)
+        ? null
+        : await ref.read(budgetRepositoryProvider).pocketUsage(pocket.id);
+    if (!mounted) return;
+    final name = _name.text.trim().isEmpty ? pocket.name : _name.text.trim();
+    final target = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.card,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.hero),
+        ),
+      ),
+      builder: (_) => _RemoveSheet(
+        name: name,
+        others: others,
+        usage: usage,
+        // Bawaan: kantong sejenis, kalau tidak ada kantong pertama.
+        initial:
+            (others.where((p) => p.type == pocket.type).firstOrNull ??
+                    others.first)
+                .id,
+      ),
+    );
+    if (target == null || !mounted) return;
+    ref.read(pocketDraftProvider.notifier).removePocket(pocket.id, target);
+    context.pop();
+  }
+
   Widget _budgetRow(PocketConfig pocket, PocketSetup setup) {
     final pct = pocket.percentOf(setup.base);
     final sub = setup.isRunning
@@ -382,6 +443,110 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet layar 45 · Hapus Kantong. Mengembalikan id kantong tujuan.
+class _RemoveSheet extends StatefulWidget {
+  const _RemoveSheet({
+    required this.name,
+    required this.others,
+    required this.usage,
+    required this.initial,
+  });
+
+  final String name;
+  final List<PocketConfig> others;
+
+  /// null = kantong belum tersimpan (belum punya saldo & catatan).
+  final ({int remaining, int entries})? usage;
+  final String initial;
+
+  @override
+  State<_RemoveSheet> createState() => _RemoveSheetState();
+}
+
+class _RemoveSheetState extends State<_RemoveSheet> {
+  late String _target = widget.initial;
+
+  String get _message {
+    final u = widget.usage;
+    if (u == null || (u.remaining == 0 && u.entries == 0)) {
+      return 'Jatahnya dipindah ke:';
+    }
+    final parts = [
+      if (u.remaining != 0) 'Sisa ${rupiah(u.remaining)}',
+      if (u.entries > 0) '${u.entries} catatannya',
+    ];
+    return '${parts.join(' & ')} dipindah ke:';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.disabledBg,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(height: 16),
+            IconBadge(
+              icon: LucideIcons.trash2,
+              background: AppColors.danger.withValues(alpha: 0.1),
+              color: AppColors.danger,
+              size: 56,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Hapus ${widget.name}?',
+              textAlign: TextAlign.center,
+              style: AppText.style(22, AppText.w800, spacingPercent: -2),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _message,
+              textAlign: TextAlign.center,
+              style: AppText.style(14, AppText.w500, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            ChipRows(
+              perRow: widget.others.length == 4 ? 2 : 3,
+              children: [
+                for (final p in widget.others)
+                  PocketChip.raw(
+                    label: p.name,
+                    icon: PocketVisuals.icon(p.iconKey),
+                    color: Color(p.color),
+                    selected: p.id == _target,
+                    onTap: () => setState(() => _target = p.id),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            AppButton(
+              label: 'Hapus & pindahin',
+              icon: LucideIcons.trash2,
+              style: AppButtonStyle.danger,
+              onPressed: () => Navigator.pop(context, _target),
+            ),
+            const SizedBox(height: 10),
+            AppButton(
+              label: 'Batal',
+              style: AppButtonStyle.secondary,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         ),
       ),
     );

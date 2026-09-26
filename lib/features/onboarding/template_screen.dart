@@ -1,54 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/controls.dart';
-import '../../core/widgets/icon_badge.dart';
 import '../../data/providers.dart';
 import '../../domain/templates.dart';
-import '../../domain/types.dart';
 
-/// Layar 19 · Pilih Template Kantong (langkah 3 dari 3 onboarding).
-class TemplateScreen extends ConsumerStatefulWidget {
+/// Layar 19 · Pilih Template Kantong (langkah 4 dari 5 onboarding). Lanjut
+/// ke 42 (saldo awal), atau 43 untuk bikin kantong sendiri.
+class TemplateScreen extends ConsumerWidget {
   const TemplateScreen({super.key});
 
   @override
-  ConsumerState<TemplateScreen> createState() => _TemplateScreenState();
-}
-
-class _TemplateScreenState extends ConsumerState<TemplateScreen> {
-  bool _saving = false;
-
-  Future<void> _finish() async {
-    setState(() => _saving = true);
-    try {
-      await ref.read(onboardingProvider.notifier).finish();
-      if (!mounted) return;
-      // Langkah terakhir: Privasi & Izin (35), lalu Beranda / Gajian masuk.
-      // Penghasilan tidak tetap belum punya pemasukan → langsung ke Beranda.
-      final mode = ref.read(onboardingProvider).mode;
-      final next = mode == IncomeMode.irregular ? '/beranda' : '/gajian-masuk';
-      context.go(
-        Uri(path: '/privasi-awal', queryParameters: {'next': next}).toString(),
-      );
-    } on StateError {
-      // Sudah terdaftar (onboarding terbuka lagi) → data lama dipertahankan.
-      if (mounted) context.go('/beranda');
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan. Coba lagi ya.')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(onboardingProvider);
     return Scaffold(
       body: SafeArea(
@@ -66,7 +33,7 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppTopBar(title: 'Langkah 4 dari 4'),
+                    const AppTopBar(title: 'Langkah 4 dari 5'),
                     const SizedBox(height: 14),
                     Text(
                       'Mau bagi duit\ngaya apa?',
@@ -98,52 +65,16 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
                       ),
                       const SizedBox(height: 14),
                     ],
-                    DashedCard(
-                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Pilih yang paling mirip dulu, nanti nama & persennya bisa diubah di Atur kantong.',
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const IconBadge(
-                            icon: LucideIcons.plus,
-                            background: AppColors.lime,
-                            color: AppColors.ink,
-                            size: 40,
-                            iconSize: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Bikin sendiri',
-                                  style: AppText.style(15, AppText.w800),
-                                ),
-                                Text(
-                                  'Atur nama, ikon & persen sesukamu',
-                                  style: AppText.style(
-                                    12,
-                                    AppText.w500,
-                                    color: AppColors.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    DashedAddCard(
+                      title: 'Bikin sendiri',
+                      subtitle: '2 sampai 6 kantong, atur sesukamu',
+                      onTap: () => context.push('/bikin-kantong'),
                     ),
                     const Spacer(),
                     const SizedBox(height: 24),
                     AppButton(
                       label: 'Pakai template ini',
-                      loading: _saving,
-                      onPressed: _finish,
+                      onPressed: () => context.push('/uang-sekarang'),
                     ),
                   ],
                 ),

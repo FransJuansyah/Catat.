@@ -8,16 +8,26 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../core/widgets/pocket_chip.dart';
 import '../../domain/allocation.dart';
 import '../../domain/templates.dart';
 
-/// Kartu "Dibagi ke 3 kantong": bar persen + nama & nominal (layar 02, 28, 29).
-/// [amount] 0 → hanya persen yang ditampilkan.
+/// Kartu "Dibagi ke N kantong": bar persen + nama & nominal (layar 02, 28, 29,
+/// 42). [amount] 0 → hanya persen yang ditampilkan. Maksimal 3 kantong per
+/// baris supaya 4–6 kantong tetap terbaca.
 class SplitPreviewCard extends StatelessWidget {
-  const SplitPreviewCard({super.key, required this.template, this.amount = 0});
+  const SplitPreviewCard({
+    super.key,
+    required this.template,
+    this.amount = 0,
+    this.title,
+  });
 
   final PocketTemplate template;
   final int amount;
+
+  /// Judul kecil di dalam kartu (layar 42).
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -33,50 +43,61 @@ class SplitPreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (title != null) ...[
+            Text(
+              title!,
+              style: AppText.style(13, AppText.w700, color: AppColors.muted),
+            ),
+            const SizedBox(height: 12),
+          ],
           SplitBar(parts: [for (final p in pockets) (p.percent, p.color)]),
           const SizedBox(height: 14),
-          Row(
+          ChipRows(
+            gap: 12,
             children: [
               for (final (i, p) in pockets.indexed)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Color(p.color),
-                              shape: BoxShape.circle,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Color(p.color),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            p.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.style(
+                              12,
+                              AppText.w500,
+                              color: AppColors.muted,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              p.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.style(
-                                12,
-                                AppText.w500,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
                         amount == 0
                             ? '${p.percent}%'
                             : '${p.percent}% · ${rupiahShort(amounts['$i']!).substring(3)}',
                         style: AppText.style(15, AppText.w800),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
             ],
           ),

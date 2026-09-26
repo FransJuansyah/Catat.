@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/tokens.dart';
+import 'icon_badge.dart';
 
 /// Toggle 48×28: ON = track ink + knob lime, OFF = track abu + knob putih.
 class AppToggle extends StatelessWidget {
@@ -98,6 +100,55 @@ class DashedCard extends StatelessWidget {
             child: child,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Kartu putus-putus dengan tombol + lime (Bikin sendiri, Tambah kantong).
+class DashedAddCard extends StatelessWidget {
+  const DashedAddCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashedCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          const IconBadge(
+            icon: LucideIcons.plus,
+            background: AppColors.lime,
+            color: AppColors.ink,
+            size: 40,
+            iconSize: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppText.style(15, AppText.w800)),
+                Text(
+                  subtitle,
+                  style: AppText.style(
+                    12,
+                    AppText.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

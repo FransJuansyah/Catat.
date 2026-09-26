@@ -12,7 +12,7 @@ import '../../domain/income_schedule.dart';
 import '../../domain/types.dart';
 import 'onboarding_widgets.dart';
 
-/// Layar 28 · Atur Uang Jajan (pelajar, langkah 3 dari 4).
+/// Layar 28 · Atur Uang Jajan (pelajar, langkah 3 dari 5).
 class AllowanceSetupScreen extends ConsumerWidget {
   const AllowanceSetupScreen({super.key});
 

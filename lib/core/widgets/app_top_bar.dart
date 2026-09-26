@@ -14,6 +14,7 @@ class AppTopBar extends StatelessWidget {
     this.onLeading,
     this.trailingIcon,
     this.onTrailing,
+    this.trailingColor = AppColors.ink,
   });
 
   final String title;
@@ -23,6 +24,9 @@ class AppTopBar extends StatelessWidget {
   final VoidCallback? onLeading;
   final IconData? trailingIcon;
   final VoidCallback? onTrailing;
+
+  /// Warna ikon kanan, mis. merah untuk hapus.
+  final Color trailingColor;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +45,11 @@ class AppTopBar extends StatelessWidget {
           ),
         ),
         if (trailingIcon != null)
-          CircleIconButton(icon: trailingIcon!, onTap: onTrailing)
+          CircleIconButton(
+            icon: trailingIcon!,
+            onTap: onTrailing,
+            iconColor: trailingColor,
+          )
         else
           const SizedBox(width: AppSize.topBarButton),
       ],

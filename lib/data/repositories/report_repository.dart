@@ -148,11 +148,12 @@ class ReportRepository {
         : 'Gajian';
     final incomes = [
       for (final p in periods)
-        if (p.salary > 0)
+        // Periode pertama dibagi dari saldo awal (layar 42), bukan gaji.
+        if ((p.opening ?? p.salary) > 0)
           IncomeEntry(
             id: p.id,
-            title: autoTitle,
-            amount: p.salary,
+            title: p.opening != null ? 'Saldo awal' : autoTitle,
+            amount: p.opening ?? p.salary,
             occurredAt: p.startDate,
             auto: true,
           ),

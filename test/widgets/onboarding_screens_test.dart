@@ -1,8 +1,10 @@
 import 'package:catat/core/theme/app_theme.dart';
 import 'package:catat/features/onboarding/allowance_setup_screen.dart';
 import 'package:catat/features/onboarding/irregular_setup_screen.dart';
+import 'package:catat/features/onboarding/opening_balance_screen.dart';
 import 'package:catat/features/onboarding/salary_setup_screen.dart';
 import 'package:catat/features/onboarding/source_screen.dart';
+import 'package:catat/features/onboarding/template_screen.dart';
 import 'package:catat/features/onboarding/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,6 +35,14 @@ void main() {
     '02 Atur gaji': (const SalarySetupScreen(), 'Tanggal gajian'),
     '28 Uang jajan': (const AllowanceSetupScreen(), 'Mingguan'),
     '29 Penghasilan': (const IrregularSetupScreen(), 'Ingetin catat pemasukan'),
+    '19 Pilih template': (
+      const TemplateScreen(),
+      '2 sampai 6 kantong, atur sesukamu',
+    ),
+    '42 Uang kamu sekarang': (
+      const OpeningBalanceScreen(),
+      'Langsung dibagi ke 3 kantong',
+    ),
   };
 
   for (final MapEntry(key: name, value: (screen, text)) in screens.entries) {

@@ -52,12 +52,14 @@ class CircleIconButton extends StatelessWidget {
     this.onTap,
     this.size = AppSize.topBarButton,
     this.iconSize = 20,
+    this.iconColor = AppColors.ink,
   });
 
   final IconData icon;
   final VoidCallback? onTap;
   final double size;
   final double iconSize;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,11 @@ class CircleIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, size: iconSize, color: AppColors.ink),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: onTap == null ? AppColors.faint : iconColor,
+          ),
         ),
       ),
     );

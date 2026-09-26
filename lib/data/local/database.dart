@@ -78,6 +78,10 @@ class Periods extends Table with SyncedRow {
   /// Layar "Gajian masuk!" (18) sudah ditampilkan untuk periode ini.
   BoolColumn get celebrated => boolean().withDefault(const Constant(false))();
 
+  /// Saldo awal user saat baru daftar (layar 42). Diisi → jatah kantong
+  /// periode ini dibagi dari angka ini, bukan dari [salary].
+  IntColumn get opening => integer().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {startDate},
@@ -174,7 +178,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -196,6 +200,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await m.addColumn(transfers, transfers.toPeriodId);
+      }
+      if (from < 5) {
+        await m.addColumn(periods, periods.opening);
       }
     },
     beforeOpen: (details) async {

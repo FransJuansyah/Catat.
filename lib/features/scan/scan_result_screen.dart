@@ -9,6 +9,7 @@ import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../core/widgets/pocket_chip.dart';
 import '../../data/providers.dart';
 import '../../data/receipt_scanner.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -175,18 +176,14 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  Row(
+                  ChipRows(
                     children: [
-                      for (final (i, p) in pockets.indexed) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: _PocketTile(
-                            pocket: p,
-                            selected: p.id == selectedId,
-                            onTap: () => setState(() => _pocketId = p.id),
-                          ),
+                      for (final p in pockets)
+                        _PocketTile(
+                          pocket: p,
+                          selected: p.id == selectedId,
+                          onTap: () => setState(() => _pocketId = p.id),
                         ),
-                      ],
                     ],
                   ),
                 ],

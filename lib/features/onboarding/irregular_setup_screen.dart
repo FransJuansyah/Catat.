@@ -12,7 +12,7 @@ import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
 import 'onboarding_widgets.dart';
 
-/// Layar 29 · Atur Penghasilan Tidak Tetap (langkah 3 dari 4).
+/// Layar 29 · Atur Penghasilan Tidak Tetap (langkah 3 dari 5).
 class IrregularSetupScreen extends ConsumerWidget {
   const IrregularSetupScreen({super.key});
 

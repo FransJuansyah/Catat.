@@ -24,6 +24,7 @@ import 'features/income/income_saved_screen.dart';
 import 'features/notes/notes_screen.dart';
 import 'features/onboarding/allowance_setup_screen.dart';
 import 'features/onboarding/irregular_setup_screen.dart';
+import 'features/onboarding/opening_balance_screen.dart';
 import 'features/onboarding/payslip_reading_screen.dart';
 import 'features/onboarding/salary_setup_screen.dart';
 import 'features/onboarding/source_screen.dart';
@@ -94,6 +95,15 @@ GoRouter createRouter({
           IncomeSavedScreen(incomeId: state.pathParameters['id']!),
     ),
     GoRoute(path: '/pilih-template', builder: (_, _) => const TemplateScreen()),
+    // Layar 43: Atur Kantong dalam mode daftar (draft onboarding).
+    GoRoute(
+      path: '/bikin-kantong',
+      builder: (_, _) => const PocketSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/uang-sekarang',
+      builder: (_, _) => const OpeningBalanceScreen(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [

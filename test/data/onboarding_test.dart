@@ -112,17 +112,26 @@ void main() {
       ..setPayday(1)
       ..setAutoAdd(false)
       ..setTemplate(PocketTemplates.pejuangNabung);
-    await container.read(onboardingProvider.notifier).finish();
+    await container.read(onboardingProvider.notifier).finish(opening: 2000000);
 
     expect(await container.read(isSetUpProvider.future), isTrue);
     final info = await repo.loadPayday();
-    // Walau "tambah otomatis" mati, gaji bulan pertama tetap dipakai.
-    expect(info.salary, 5000000);
+    // Periode pertama dibagi dari uang user sekarang (layar 42), bukan gaji,
+    // juga saat "tambah otomatis" mati. Tidak ada layar "Gajian masuk!".
+    expect(info.salary, 2000000);
+    expect(info.celebrated, isTrue);
     expect(info.start, DateTime(2026, 9, 1));
     expect(info.allocations.map((a) => a.$1.name), [
       'Kebutuhan',
       'Tabungan',
       'Self-reward',
     ]);
+    expect(info.allocations.map((a) => a.$2), [900000, 700000, 400000]);
+    final home = await repo.loadHome();
+    expect(home.remaining, 2000000);
+    expect(home.opening, 2000000);
+    // Pengaturan gaji tetap 5 juta untuk gajian berikutnya.
+    expect(home.salary, 0);
+    expect((await db.select(db.salarySettings).getSingle()).netSalary, 5000000);
   });
 }

@@ -11,7 +11,7 @@ import '../../core/widgets/icon_badge.dart';
 import '../../data/providers.dart';
 import '../../domain/types.dart';
 
-/// Layar 27 · Pilih Sumber Uang (langkah 2 dari 4).
+/// Layar 27 · Pilih Sumber Uang (langkah 2 dari 5).
 class SourceScreen extends ConsumerWidget {
   const SourceScreen({super.key});
 
@@ -64,7 +64,7 @@ class SourceScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppTopBar(title: 'Langkah 2 dari 4'),
+                    const AppTopBar(title: 'Langkah 2 dari 5'),
                     const SizedBox(height: 14),
                     Text(
                       'Uangmu biasanya\ndatang dari mana?',

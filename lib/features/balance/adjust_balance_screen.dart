@@ -127,18 +127,14 @@ class _AdjustBalanceScreenState extends ConsumerState<AdjustBalanceScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      ChipRows(
                         children: [
-                          for (final (i, p) in pockets.indexed) ...[
-                            if (i > 0) const SizedBox(width: 8),
-                            Expanded(
-                              child: PocketChip(
-                                pocket: p,
-                                selected: p.id == pocketId,
-                                onTap: () => setState(() => _pocketId = p.id),
-                              ),
+                          for (final p in pockets)
+                            PocketChip(
+                              pocket: p,
+                              selected: p.id == pocketId,
+                              onTap: () => setState(() => _pocketId = p.id),
                             ),
-                          ],
                         ],
                       ),
                     ],

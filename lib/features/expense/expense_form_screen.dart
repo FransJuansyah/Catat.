@@ -235,21 +235,17 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
+                    ChipRows(
                       children: [
-                        for (final (i, p) in pockets.indexed) ...[
-                          if (i > 0) const SizedBox(width: 8),
-                          Expanded(
-                            child: PocketChip(
-                              pocket: p,
-                              selected: p.id == _pocketId,
-                              onTap: () {
-                                _hideKeyboard();
-                                setState(() => _pocketId = p.id);
-                              },
-                            ),
+                        for (final p in pockets)
+                          PocketChip(
+                            pocket: p,
+                            selected: p.id == _pocketId,
+                            onTap: () {
+                              _hideKeyboard();
+                              setState(() => _pocketId = p.id);
+                            },
                           ),
-                        ],
                       ],
                     ),
                     const Spacer(),
