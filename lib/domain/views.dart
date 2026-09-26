@@ -94,6 +94,28 @@ class CalendarMonth {
   final int? paydayDay;
 }
 
+/// Gaji periode berjalan & pembagiannya (layar 18 · Gajian Masuk).
+class PaydayInfo {
+  const PaydayInfo({
+    required this.periodId,
+    required this.start,
+    required this.salary,
+    required this.celebrated,
+    required this.allocations,
+  });
+
+  final String periodId;
+
+  /// Hari gajian (awal periode).
+  final DateTime start;
+  final int salary;
+  final bool celebrated;
+  final List<(PocketRef, int)> allocations;
+
+  /// Gaji periode ini belum diisi (opsi "Tambah otomatis" mati).
+  bool get needsSalary => salary == 0;
+}
+
 /// Detail kantong di periode berjalan (layar 12).
 class PocketDetail {
   const PocketDetail({

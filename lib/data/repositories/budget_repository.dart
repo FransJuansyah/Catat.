@@ -38,10 +38,11 @@ class BudgetRepository {
 
   /// Simpan profil, gaji, dan kantong dari template (dipakai onboarding, layar 02 & 19).
   Future<void> setupBudget({
-    required String userName,
+    String userName = '',
     required int netSalary,
     required int payday,
     required PocketTemplate template,
+    bool autoAdd = true,
   }) {
     if (netSalary < 0) throw ArgumentError.value(netSalary, 'netSalary');
     if (payday < 1 || payday > 31) throw ArgumentError.value(payday, 'payday');
@@ -56,6 +57,7 @@ class BudgetRepository {
               id: _newId(),
               netSalary: netSalary,
               payday: payday,
+              autoAdd: Value(autoAdd),
             ),
           );
       for (final (i, p) in template.pockets.indexed) {
@@ -93,11 +95,11 @@ class BudgetRepository {
               .getSingleOrNull();
       if (existing != null) return existing;
 
+      // "Tambah otomatis" mati → periode dibuat dengan gaji 0, user mengisi
+      // sendiri lewat layar Gajian Masuk (setPeriodSalary).
+      final salary = settings.autoAdd ? settings.netSalary : 0;
       final pockets = await _activePockets();
-      final amounts = allocateAll(
-        settings.netSalary,
-        pockets.map(_ruleOf).toList(),
-      );
+      final amounts = allocateAll(salary, pockets.map(_ruleOf).toList());
       final periodId = _newId();
       await _db
           .into(_db.periods)
@@ -106,7 +108,7 @@ class BudgetRepository {
               id: periodId,
               startDate: period.start,
               endDate: period.end,
-              salary: settings.netSalary,
+              salary: salary,
             ),
           );
       for (final p in pockets) {
@@ -124,6 +126,72 @@ class BudgetRepository {
       return (_db.select(
         _db.periods,
       )..where((t) => t.id.equals(periodId))).getSingle();
+    });
+  }
+
+  /// Gaji periode berjalan & pembagiannya (layar 18).
+  Future<PaydayInfo> loadPayday() async {
+    final period = await ensureCurrentPeriod();
+    final allocations = await (_db.select(
+      _db.periodAllocations,
+    )..where((t) => t.periodId.equals(period.id) & t.deletedAt.isNull())).get();
+    final refs = await _pocketRefs();
+    final pockets = await _activePockets();
+    final amountOf = {for (final a in allocations) a.pocketId: a.amount};
+    return PaydayInfo(
+      periodId: period.id,
+      start: dateOnly(period.startDate),
+      salary: period.salary,
+      celebrated: period.celebrated,
+      allocations: [
+        for (final p in pockets)
+          if (refs[p.id] case final ref?) (ref, amountOf[p.id] ?? 0),
+      ],
+    );
+  }
+
+  Stream<PaydayInfo> watchPayday() => _watch(loadPayday);
+
+  Future<void> markCelebrated(String periodId) async {
+    await (_db.update(_db.periods)..where((t) => t.id.equals(periodId))).write(
+      PeriodsCompanion(celebrated: const Value(true), updatedAt: Value(_now())),
+    );
+  }
+
+  /// Isi/ubah gaji satu periode lalu bagi ulang ke kantong.
+  Future<void> setPeriodSalary(String periodId, int salary) {
+    if (salary < 0) throw ArgumentError.value(salary, 'salary');
+    return _db.transaction(() async {
+      final now = _now();
+      await (_db.update(
+        _db.periods,
+      )..where((t) => t.id.equals(periodId))).write(
+        PeriodsCompanion(salary: Value(salary), updatedAt: Value(now)),
+      );
+      final pockets = await _activePockets();
+      final amounts = allocateAll(salary, pockets.map(_ruleOf).toList());
+      for (final p in pockets) {
+        await _db
+            .into(_db.periodAllocations)
+            .insert(
+              PeriodAllocationsCompanion.insert(
+                id: _newId(),
+                periodId: periodId,
+                pocketId: p.id,
+                amount: amounts[p.id]!,
+              ),
+              onConflict: DoUpdate(
+                (_) => PeriodAllocationsCompanion(
+                  amount: Value(amounts[p.id]!),
+                  updatedAt: Value(now),
+                ),
+                target: [
+                  _db.periodAllocations.periodId,
+                  _db.periodAllocations.pocketId,
+                ],
+              ),
+            );
+      }
     });
   }
 
@@ -436,18 +504,20 @@ class BudgetRepository {
     ];
   }
 
+  Future<Map<String, PocketRef>> _pocketRefs() async => {
+    for (final p in await _allPockets())
+      p.id: PocketRef(
+        id: p.id,
+        type: p.type,
+        name: p.name,
+        iconKey: p.iconKey,
+        color: p.color,
+      ),
+  };
+
   Future<List<ExpenseEntry>> _entries(List<ExpenseRow> rows) async {
     if (rows.isEmpty) return const [];
-    final refs = {
-      for (final p in await _allPockets())
-        p.id: PocketRef(
-          id: p.id,
-          type: p.type,
-          name: p.name,
-          iconKey: p.iconKey,
-          color: p.color,
-        ),
-    };
+    final refs = await _pocketRefs();
     return [
       for (final r in rows)
         if (refs[r.pocketId] case final pocket?)

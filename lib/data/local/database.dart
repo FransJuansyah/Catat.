@@ -57,6 +57,9 @@ class Periods extends Table with SyncedRow {
   IntColumn get salary => integer()();
   BoolColumn get autoCreated => boolean().withDefault(const Constant(true))();
 
+  /// Layar "Gajian masuk!" (18) sudah ditampilkan untuk periode ini.
+  BoolColumn get celebrated => boolean().withDefault(const Constant(false))();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {startDate},
@@ -123,10 +126,17 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(periods, periods.celebrated);
+        // Periode lama dianggap sudah dirayakan supaya tidak muncul ulang.
+        await customStatement('UPDATE periods SET celebrated = 1');
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

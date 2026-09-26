@@ -11,11 +11,30 @@ import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 
 /// Layar 03 · Beranda — design/screens/03 · Beranda.png
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _paydayShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Periode gaji baru → tampilkan "Gajian masuk!" sekali.
+    ref.listenManual(paydayProvider, (_, next) {
+      final info = next.value;
+      if (info == null || info.celebrated || _paydayShown || !mounted) return;
+      _paydayShown = true;
+      context.push('/gajian-masuk');
+    }, fireImmediately: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final summary = ref.watch(homeSummaryProvider);
     return SafeArea(
       bottom: false,
@@ -108,10 +127,12 @@ class _Header extends StatelessWidget {
             color: AppColors.lime,
             shape: BoxShape.circle,
           ),
-          child: Text(
-            name.isEmpty ? '?' : name[0].toUpperCase(),
-            style: AppText.style(18, AppText.w800),
-          ),
+          child: name.isEmpty
+              ? const Icon(LucideIcons.user, size: 20, color: AppColors.ink)
+              : Text(
+                  name[0].toUpperCase(),
+                  style: AppText.style(18, AppText.w800),
+                ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -119,7 +140,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hai, $name',
+                name.isEmpty ? 'Hai!' : 'Hai, $name',
                 style: AppText.style(18, AppText.w800, spacingPercent: -1),
               ),
               const SizedBox(height: 1),

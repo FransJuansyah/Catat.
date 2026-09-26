@@ -1,10 +1,10 @@
-import '../../domain/templates.dart';
-import '../../domain/types.dart';
-import '../local/database.dart';
-import '../repositories/budget_repository.dart';
+import 'package:catat/data/local/database.dart';
+import 'package:catat/data/repositories/budget_repository.dart';
+import 'package:catat/domain/templates.dart';
+import 'package:catat/domain/types.dart';
 
-/// Data contoh sesuai desain Figma, dipakai SEMENTARA sampai onboarding
-/// (fase F3) jadi. Hanya diisi jika database masih kosong.
+/// Data contoh sesuai desain Figma (fixture test). Dulu dipakai app sebelum onboarding
+/// (F3); kini hanya untuk test. Diisi jika database masih kosong.
 class DemoSeed {
   DemoSeed(this._repo, this._db, this._now);
 
