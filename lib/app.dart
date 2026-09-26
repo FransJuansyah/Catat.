@@ -298,7 +298,8 @@ class _CatatAppState extends ConsumerState<CatatApp>
     if (action is ShareLaunch) {
       unawaited(_router.push('/baca-struk', extra: action.imagePath));
     } else {
-      unawaited(_router.push(launchLocation(action)));
+      final location = launchLocation(action);
+      if (location != null) unawaited(_router.push(location));
     }
   }
 

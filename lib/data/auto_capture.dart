@@ -200,15 +200,22 @@ DetectedTransaction? detectedFromMap(Map<Object?, Object?> c) =>
           NotificationSource.financeApp,
     );
 
-/// Alamat layar untuk satu aksi pembukaan.
-String launchLocation(LaunchAction action) {
+/// Rute dari tombol "Ubah" di notif "Tercatat". MainActivity bisa dipanggil
+/// aplikasi lain, jadi hanya detail catatan yang boleh dibuka dari luar (bukan
+/// mis. layar pendaftaran awal yang bisa menggandakan data).
+final _openableRoute = RegExp(
+  r'^/(transaksi|pemasukan-masuk)/[A-Za-z0-9-]{1,64}$',
+);
+
+/// Alamat layar untuk satu aksi pembukaan; null = rute tidak diizinkan.
+String? launchLocation(LaunchAction action) {
   switch (action) {
     case ShareLaunch():
       return '/baca-struk';
     case ReminderLaunch():
       return '/catat';
     case RouteLaunch(:final location):
-      return location;
+      return _openableRoute.hasMatch(location) ? location : null;
     case CaptureLaunch(transaction: null):
       return '/catat';
     case CaptureLaunch(transaction: final t?):
