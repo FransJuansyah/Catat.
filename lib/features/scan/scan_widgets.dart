@@ -38,28 +38,37 @@ class DarkCircleButton extends StatelessWidget {
   }
 }
 
-/// Pil petunjuk ("Pas-in struk di dalam kotak").
+/// Pil petunjuk scan. [highlight] = lime saat struk kebaca (layar 46).
 class HintPill extends StatelessWidget {
-  const HintPill({super.key, required this.text});
+  const HintPill({super.key, required this.text, this.highlight = false});
 
   final String text;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: highlight ? AppColors.lime : AppColors.darkSurface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.sparkles, size: 14, color: AppColors.lime),
+          Icon(
+            LucideIcons.sparkles,
+            size: 14,
+            color: highlight ? AppColors.ink : AppColors.lime,
+          ),
           const SizedBox(width: 8),
           Text(
             text,
-            style: AppText.style(13, AppText.w700, color: Colors.white),
+            style: AppText.style(
+              13,
+              AppText.w700,
+              color: highlight ? AppColors.ink : Colors.white,
+            ),
           ),
         ],
       ),
@@ -67,7 +76,7 @@ class HintPill extends StatelessWidget {
   }
 }
 
-/// Galeri / Manual di kiri-kanan tombol jepret.
+/// Galeri / Manual di bawah kamera.
 class SideAction extends StatelessWidget {
   const SideAction({
     super.key,
@@ -110,57 +119,13 @@ class SideAction extends StatelessWidget {
   }
 }
 
-/// Tombol jepret: cincin putih + lingkaran lime.
-class ShutterButton extends StatelessWidget {
-  const ShutterButton({super.key, required this.onTap, this.busy = false});
-
-  final VoidCallback? onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Foto struk',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 76,
-          height: 76,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-          ),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: onTap == null && !busy
-                  ? AppColors.lime.withValues(alpha: 0.4)
-                  : AppColors.lime,
-            ),
-            child: busy
-                ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: AppColors.ink,
-                    ),
-                  )
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Sudut-sudut lime + garis scan yang naik-turun.
+/// Sudut-sudut lime + garis scan yang naik-turun. [locked] = struk kebaca:
+/// sudut menyatu jadi bingkai penuh, garis berhenti (layar 46).
 class ScanFrame extends StatefulWidget {
-  const ScanFrame({super.key, this.animate = true});
+  const ScanFrame({super.key, this.animate = true, this.locked = false});
 
   final bool animate;
+  final bool locked;
 
   @override
   State<ScanFrame> createState() => _ScanFrameState();
@@ -190,14 +155,19 @@ class _ScanFrameState extends State<ScanFrame>
     return AnimatedBuilder(
       animation: _line,
       builder: (context, _) => CustomPaint(
-        painter: _FramePainter(widget.animate ? _line.value : null),
+        painter: _FramePainter(
+          widget.animate && !widget.locked ? _line.value : null,
+          locked: widget.locked,
+        ),
       ),
     );
   }
 }
 
 class _FramePainter extends CustomPainter {
-  _FramePainter(this.progress);
+  _FramePainter(this.progress, {this.locked = false});
+
+  final bool locked;
 
   /// Posisi garis scan 0..1 (null = tanpa garis).
   final double? progress;
@@ -213,6 +183,16 @@ class _FramePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     final w = size.width;
     final h = size.height;
+    if (locked) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          (Offset.zero & size).deflate(2.5),
+          const Radius.circular(r),
+        ),
+        paint,
+      );
+      return;
+    }
     Path corner(Offset o, double dx, double dy) => Path()
       ..moveTo(o.dx, o.dy + dy * (len + r))
       ..lineTo(o.dx, o.dy + dy * r)
@@ -252,5 +232,6 @@ class _FramePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _FramePainter old) => old.progress != progress;
+  bool shouldRepaint(covariant _FramePainter old) =>
+      old.progress != progress || old.locked != locked;
 }

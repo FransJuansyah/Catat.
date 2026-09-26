@@ -3,27 +3,49 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/theme/tokens.dart';
+import '../../data/providers.dart';
+import '../../data/receipt_scanner.dart';
+import '../../domain/receipt_lock.dart';
 import 'scan_widgets.dart';
 
-/// Layar 04 · Scan Struk (kamera).
-class ScanScreen extends StatefulWidget {
+/// Layar 04 · Scan Struk (kamera) tanpa tombol jepret: frame kamera dibaca
+/// terus, begitu TOTAL kebaca stabil → layar 46 → foto otomatis → 09.
+class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
   @override
-  State<ScanScreen> createState() => _ScanScreenState();
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
+class _ScanScreenState extends ConsumerState<ScanScreen>
+    with WidgetsBindingObserver {
+  /// Jeda minimal antar-frame yang dibaca (hemat baterai).
+  static const _frameGap = Duration(milliseconds: 350);
+
+  /// Selama ini belum kebaca → tampilkan tips.
+  static const _slowAfter = Duration(seconds: 8);
+
   CameraController? _camera;
+  late final ReceiptFrameReader _reader = ReceiptFrameReader(
+    ref.read(clockProvider),
+  );
+  final _lock = ReceiptLock();
+  bool _reading = false;
+  DateTime _lastFrame = DateTime(0);
+  Timer? _slowTimer;
+  bool _slow = false;
 
   /// Pesan kalau kamera tidak bisa dipakai (izin ditolak / tidak ada kamera).
   String? _error;
   bool _flash = false;
+
+  /// Struk kebaca & sedang difoto (layar 46).
   bool _busy = false;
 
   @override
@@ -36,7 +58,9 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _slowTimer?.cancel();
     _camera?.dispose();
+    unawaited(_reader.close());
     super.dispose();
   }
 
@@ -45,6 +69,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final camera = _camera;
     if (state == AppLifecycleState.inactive) {
       _camera = null;
+      _slowTimer?.cancel();
       camera?.dispose();
       if (mounted) setState(() {});
     } else if (state == AppLifecycleState.resumed && camera == null) {
@@ -66,7 +91,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         back.isNotEmpty ? back.first : cameras.first,
         ResolutionPreset.veryHigh,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        // Frame buat dibaca ML Kit; foto tetap JPEG.
+        imageFormatGroup: ImageFormatGroup.nv21,
       );
       await controller.initialize();
       await controller.setFlashMode(FlashMode.off);
@@ -78,7 +104,10 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         _camera = controller;
         _error = null;
         _flash = false;
+        _busy = false;
+        _slow = false;
       });
+      await _startReading();
     } on CameraException catch (e) {
       if (!mounted) return;
       setState(
@@ -101,20 +130,62 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _startReading() async {
+    final camera = _camera;
+    if (camera == null || camera.value.isStreamingImages) return;
+    _lock.reset();
+    _slowTimer?.cancel();
+    _slowTimer = Timer(_slowAfter, () {
+      if (mounted && !_busy) setState(() => _slow = true);
+    });
+    try {
+      await camera.startImageStream(_onFrame);
+    } on CameraException {
+      // Stream tidak didukung: Galeri & Manual tetap bisa dipakai.
+    }
+  }
+
+  Future<void> _onFrame(CameraImage image) async {
+    final camera = _camera;
+    final now = DateTime.now();
+    if (camera == null || _reading || _busy) return;
+    if (now.difference(_lastFrame) < _frameGap) return;
+    _reading = true;
+    _lastFrame = now;
+    try {
+      final data = await _reader.read(
+        image,
+        camera.description.sensorOrientation,
+      );
+      if (data != null && _lock.add(data) && mounted) await _capture();
+    } on Object {
+      // Frame gagal dibaca: tunggu frame berikutnya.
+    } finally {
+      _reading = false;
+    }
+  }
+
   Future<void> _capture() async {
     final camera = _camera;
-    if (camera == null || _busy || camera.value.isTakingPicture) return;
+    if (camera == null || _busy) return;
     setState(() => _busy = true);
+    _slowTimer?.cancel();
+    unawaited(HapticFeedback.mediumImpact());
     try {
+      if (camera.value.isStreamingImages) await camera.stopImageStream();
       final file = await camera.takePicture();
       if (_flash) await camera.setFlashMode(FlashMode.off);
       if (mounted) _read(file.path);
     } on CameraException {
       if (!mounted) return;
-      setState(() => _busy = false);
+      setState(() {
+        _busy = false;
+        _slow = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal ambil foto, coba lagi ya.')),
       );
+      await _startReading();
     }
   }
 
@@ -171,7 +242,14 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                 const SizedBox(height: 20),
                 Expanded(child: _viewfinder()),
                 const SizedBox(height: 20),
-                const HintPill(text: 'Pas-in struk di dalam kotak'),
+                HintPill(
+                  text: _busy
+                      ? 'Kebaca! Tahan bentar…'
+                      : _slow
+                      ? 'Dekatin & cari tempat terang'
+                      : 'Arahin ke struk, nanti kefoto sendiri',
+                  highlight: _busy,
+                ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,10 +258,6 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                       icon: LucideIcons.image,
                       label: 'Galeri',
                       onTap: _busy ? null : _pickGallery,
-                    ),
-                    ShutterButton(
-                      onTap: _camera == null || _busy ? null : _capture,
-                      busy: _busy,
                     ),
                     SideAction(
                       icon: LucideIcons.pencil,
@@ -249,8 +323,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           children: [
             Positioned.fill(child: preview),
             if (camera != null)
-              const Positioned.fill(
-                child: Padding(padding: EdgeInsets.all(28), child: ScanFrame()),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: ScanFrame(locked: _busy),
+                ),
               ),
           ],
         ),
