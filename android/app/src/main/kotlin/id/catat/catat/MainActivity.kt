@@ -77,6 +77,7 @@ class MainActivity : FlutterActivity() {
         }
         target.path
     } catch (e: Exception) {
+        android.util.Log.w("catat.share", "Gambar yang dibagikan gagal dibaca: $uri", e)
         null
     }
 
