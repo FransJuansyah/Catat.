@@ -50,6 +50,13 @@ abstract final class AppSize {
   static const topBarButton = 40.0;
   static const fab = 54.0;
   static const buttonHeight = 56.0;
+
+  /// Lebar isi layar maksimum. Tablet / HP lipat dibuka: isi di tengah.
+  static const maxContent = 480.0;
+
+  /// Sisi pendek layar (dp) mulai dianggap tablet / HP lipat dibuka:
+  /// di bawahnya HP biasa dikunci tegak.
+  static const tabletShortestSide = 600.0;
 }
 
 abstract final class AppShadow {

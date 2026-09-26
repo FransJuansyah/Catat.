@@ -151,9 +151,15 @@ class _GoogleButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'Lanjut dengan Google',
-                style: AppText.style(16, AppText.w700),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Lanjut dengan Google',
+                    maxLines: 1,
+                    style: AppText.style(16, AppText.w700),
+                  ),
+                ),
               ),
             ],
           ),
@@ -175,168 +181,173 @@ class _SalarySplitIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lebar dari layar, bukan LayoutBuilder: layar ini memakai
-    // SliverFillRemaining yang mengukur tinggi intrinsik isinya.
-    final available = MediaQuery.sizeOf(context).width - AppSpace.screenX * 2;
-    final w = math.min(available, 350.0);
-    final s = w / 350;
+    // Digambar di ukuran desain lalu diperkecil utuh (FittedBox) di layar
+    // sempit: isi kotak kantong tidak terpotong. Hiasan → abaikan setelan
+    // huruf besar.
+    const w = 350.0;
     const cardH = 68.0;
-    final lineH = 60 * s;
-    final tileW = 108 * s;
-    final tileH = 262 * s - cardH - lineH;
-    return Center(
-      child: SizedBox(
-        width: w,
-        height: cardH + lineH + tileH,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              top: cardH,
-              left: 0,
-              right: 0,
-              height: lineH,
-              child: CustomPaint(
-                painter: _FlowLinesPainter(
-                  tileCenters: [57 * s, 175 * s, 293 * s],
+    const lineH = 60.0;
+    const tileW = 108.0;
+    const tileH = 262 - cardH - lineH;
+    return MediaQuery.withNoTextScaling(
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: SizedBox(
+            width: w,
+            height: cardH + lineH + tileH,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: cardH,
+                  left: 0,
+                  right: 0,
+                  height: lineH,
+                  child: CustomPaint(
+                    painter: _FlowLinesPainter(tileCenters: [57, 175, 293]),
+                  ),
                 ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.topCenter,
-              child: Container(
-                height: cardH,
-                padding: const EdgeInsets.fromLTRB(14, 10, 20, 10),
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x2E0E0E10),
-                      offset: Offset(0, 10),
-                      blurRadius: 24,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const IconBadge(
-                      icon: LucideIcons.wallet,
-                      background: AppColors.lime,
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    height: cardH,
+                    padding: const EdgeInsets.fromLTRB(14, 10, 20, 10),
+                    decoration: BoxDecoration(
                       color: AppColors.ink,
-                      size: 40,
-                      iconSize: 20,
-                      square: true,
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Duit masuk',
-                          style: AppText.style(
-                            12,
-                            AppText.w500,
-                            color: AppColors.faint,
-                          ),
-                        ),
-                        Text(
-                          '+Rp 6.500.000',
-                          style: AppText.style(
-                            20,
-                            AppText.w800,
-                            color: Colors.white,
-                            spacingPercent: -2,
-                          ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x2E0E0E10),
+                          offset: Offset(0, 10),
+                          blurRadius: 24,
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: -12,
-              right: w * 0.12,
-              child: Transform.rotate(
-                angle: -6 * math.pi / 180,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.lime,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1F0E0E10),
-                        offset: Offset(0, 4),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        LucideIcons.check,
-                        size: 12,
-                        color: AppColors.ink,
-                      ),
-                      const SizedBox(width: 4),
-                      Text('Otomatis', style: AppText.style(11, AppText.w800)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            for (final (i, (icon, pct, name, color)) in _tiles.indexed)
-              Positioned(
-                top: cardH + lineH,
-                left: [3.0, 121.0, 239.0][i] * s,
-                width: tileW,
-                height: tileH,
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: PocketVisuals.soft(color),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      IconBadge(
-                        icon: icon,
-                        background: Colors.white,
-                        color: color,
-                        size: 34,
-                        iconSize: 17,
-                      ),
-                      const Spacer(),
-                      Text(
-                        pct,
-                        style: AppText.style(
-                          24,
-                          AppText.w800,
-                          color: color,
-                          spacingPercent: -3,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const IconBadge(
+                          icon: LucideIcons.wallet,
+                          background: AppColors.lime,
+                          color: AppColors.ink,
+                          size: 40,
+                          iconSize: 20,
+                          square: true,
                         ),
-                      ),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          name,
-                          style: AppText.style(13, AppText.w800),
+                        const SizedBox(width: 12),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Duit masuk',
+                              style: AppText.style(
+                                12,
+                                AppText.w500,
+                                color: AppColors.faint,
+                              ),
+                            ),
+                            Text(
+                              '+Rp 6.500.000',
+                              style: AppText.style(
+                                20,
+                                AppText.w800,
+                                color: Colors.white,
+                                spacingPercent: -2,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+                Positioned(
+                  top: -12,
+                  right: w * 0.12,
+                  child: Transform.rotate(
+                    angle: -6 * math.pi / 180,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.lime,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1F0E0E10),
+                            offset: Offset(0, 4),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            LucideIcons.check,
+                            size: 12,
+                            color: AppColors.ink,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Otomatis',
+                            style: AppText.style(11, AppText.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                for (final (i, (icon, pct, name, color)) in _tiles.indexed)
+                  Positioned(
+                    top: cardH + lineH,
+                    left: [3.0, 121.0, 239.0][i],
+                    width: tileW,
+                    height: tileH,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: PocketVisuals.soft(color),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IconBadge(
+                            icon: icon,
+                            background: Colors.white,
+                            color: color,
+                            size: 34,
+                            iconSize: 17,
+                          ),
+                          const Spacer(),
+                          Text(
+                            pct,
+                            style: AppText.style(
+                              24,
+                              AppText.w800,
+                              color: color,
+                              spacingPercent: -3,
+                            ),
+                          ),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              name,
+                              style: AppText.style(13, AppText.w800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

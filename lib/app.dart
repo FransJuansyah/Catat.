@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/widgets/app_frame.dart';
 import 'core/widgets/app_shell.dart';
 import 'data/auto_capture.dart';
 import 'data/providers.dart';
@@ -45,8 +46,16 @@ import 'features/report/report_screen.dart';
 import 'features/scan/scan_screen.dart';
 import 'data/export/report_exporter.dart';
 
-final _router = GoRouter(
-  initialLocation: '/',
+final _router = createRouter();
+
+/// Semua rute aplikasi. [initialLocation]/[initialExtra] dipakai test untuk
+/// membuka layar mana pun langsung.
+GoRouter createRouter({
+  String initialLocation = '/',
+  Object? initialExtra,
+}) => GoRouter(
+  initialLocation: initialLocation,
+  initialExtra: initialExtra,
   routes: [
     GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
     GoRoute(path: '/masuk', builder: (_, _) => const WelcomeScreen()),
@@ -227,13 +236,35 @@ class CatatApp extends ConsumerStatefulWidget {
   ConsumerState<CatatApp> createState() => _CatatAppState();
 }
 
-class _CatatAppState extends ConsumerState<CatatApp> {
+class _CatatAppState extends ConsumerState<CatatApp>
+    with WidgetsBindingObserver {
   StreamSubscription<void>? _launches;
   StreamSubscription<void>? _dataChanges;
+  bool? _compact;
+
+  /// HP dikunci tegak (layar keypad tidak muat saat mendatar); tablet & HP
+  /// lipat yang dibuka bebas diputar. Dicek ulang saat HP lipat dibuka/ditutup.
+  void _applyOrientation() {
+    final view = WidgetsBinding.instance.platformDispatcher.views.firstOrNull;
+    if (view == null || view.physicalSize.isEmpty) return;
+    final compact = isCompactScreen(view.physicalSize / view.devicePixelRatio);
+    if (compact == _compact) return;
+    _compact = compact;
+    unawaited(
+      SystemChrome.setPreferredOrientations(
+        compact ? const [DeviceOrientation.portraitUp] : const [],
+      ),
+    );
+  }
+
+  @override
+  void didChangeMetrics() => _applyOrientation();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _applyOrientation();
     final bridge = ref.read(autoCaptureProvider);
     // Aplikasi sudah terbuka lalu notif catat. / share diketuk.
     _launches = bridge.launches.listen((_) {
@@ -253,6 +284,7 @@ class _CatatAppState extends ConsumerState<CatatApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_launches?.cancel());
     unawaited(_dataChanges?.cancel());
     super.dispose();
@@ -284,13 +316,17 @@ class _CatatAppState extends ConsumerState<CatatApp> {
       supportedLocales: const [Locale('id')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: _router,
-      // Ikon status bar gelap di layar terang; layar gelap menimpa sendiri.
-      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark.copyWith(
-          statusBarColor: Colors.transparent,
-        ),
-        child: child!,
-      ),
+      builder: appBuilder,
     );
   }
 }
+
+/// Pembungkus semua layar (juga dipakai test): ikon status bar gelap di
+/// layar terang (layar gelap menimpa sendiri) + bingkai tablet.
+Widget appBuilder(BuildContext context, Widget? child) =>
+    AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: AppFrame(child: child!),
+    );

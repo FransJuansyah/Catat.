@@ -68,9 +68,16 @@ class AppButton extends StatelessWidget {
                         Icon(icon, size: 20, color: fg),
                         const SizedBox(width: 8),
                       ],
-                      Text(
-                        label,
-                        style: AppText.style(16, AppText.w700, color: fg),
+                      // HP kecil / huruf besar: label mengecil, tidak terpotong.
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            style: AppText.style(16, AppText.w700, color: fg),
+                          ),
+                        ),
                       ),
                     ],
                   ),

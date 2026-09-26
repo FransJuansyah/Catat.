@@ -496,34 +496,46 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
+      child: Wrap(
+        // HP 320dp: keterangan kedua turun ke baris baru.
+        spacing: 14,
+        runSpacing: 6,
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: _incomeSoft,
-              borderRadius: BorderRadius.circular(4),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: _incomeSoft,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Ada pemasukan',
+                style: AppText.style(11, AppText.w700, color: AppColors.muted),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            'Ada pemasukan',
-            style: AppText.style(11, AppText.w700, color: AppColors.muted),
-          ),
-          const SizedBox(width: 14),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: AppColors.muted,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Pengeluaran per kantong',
-            style: AppText.style(11, AppText.w700, color: AppColors.muted),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.muted,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Pengeluaran per kantong',
+                style: AppText.style(11, AppText.w700, color: AppColors.muted),
+              ),
+            ],
           ),
         ],
       ),

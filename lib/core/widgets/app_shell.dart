@@ -44,15 +44,19 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    // Desain: margin 24. HP 320dp tidak muat (4 tab + Scan = 278) → menyusut.
+    final side =
+        ((MediaQuery.sizeOf(context).width - 4 * _Tab.width - AppSize.fab) / 2)
+            .clamp(0.0, 24.0);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24,
+        side,
         8,
-        24,
+        side,
         bottomInset > 0 ? bottomInset + 6 : 22,
       ),
       child: Row(
@@ -100,6 +104,8 @@ class _Tab extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  static const width = 56.0;
+
   final VoidCallback onTap;
 
   @override
@@ -109,7 +115,7 @@ class _Tab extends StatelessWidget {
       onTap: onTap,
       radius: 32,
       child: SizedBox(
-        width: 56,
+        width: width,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
