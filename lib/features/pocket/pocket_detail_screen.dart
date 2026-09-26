@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
@@ -44,6 +45,13 @@ class PocketDetailScreen extends ConsumerWidget {
               _Hero(detail: detail),
               const SizedBox(height: 16),
               _Tip(detail: detail),
+              const SizedBox(height: 10),
+              AppButton(
+                label: 'Pindahin saldo ke sini',
+                icon: LucideIcons.repeat,
+                style: AppButtonStyle.secondary,
+                onPressed: () => context.push('/pindah-saldo?to=$pocketId'),
+              ),
               const SizedBox(height: AppSpace.section),
               Row(
                 children: [

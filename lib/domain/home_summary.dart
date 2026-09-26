@@ -14,6 +14,7 @@ class PocketView {
     this.mode = AllocationMode.percent,
     this.percent = 0,
     this.nominal = 0,
+    this.lowThresholdPercent = 20,
   });
 
   final String id;
@@ -29,6 +30,14 @@ class PocketView {
   final AllocationMode mode;
   final int percent;
   final int nominal;
+
+  /// Ambang peringatan hampir habis (0 = mati).
+  final int lowThresholdPercent;
+
+  /// Sisa di bawah ambang → peringatan (layar 24).
+  bool get isLow =>
+      lowThresholdPercent > 0 &&
+      balance.isLow(thresholdPercent: lowThresholdPercent);
 
   PocketRule get rule =>
       PocketRule(pocketId: id, mode: mode, percent: percent, nominal: nominal);

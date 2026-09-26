@@ -121,7 +121,14 @@ class Transfers extends Table with SyncedRow {
   TextColumn get fromPocketId => text().references(Pockets, #id)();
   @ReferenceName('incomingTransfers')
   TextColumn get toPocketId => text().references(Pockets, #id)();
+
+  /// Periode asal (saldo keluar dihitung di sini).
   TextColumn get periodId => text().references(Periods, #id)();
+
+  /// Periode tujuan bila beda dengan asal: sisa akhir periode yang pindah ke
+  /// Dana Darurat periode berikutnya. null = periode yang sama.
+  @ReferenceName('incomingPeriodTransfers')
+  TextColumn get toPeriodId => text().nullable().references(Periods, #id)();
   IntColumn get amount => integer().check(amount.isBiggerThanValue(0))();
   DateTimeColumn get occurredAt => dateTime()();
 }
@@ -167,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -186,6 +193,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(salarySettings, salarySettings.incomeReminder);
         await m.createTable(incomes);
         await m.createTable(incomeAllocations);
+      }
+      if (from < 4) {
+        await m.addColumn(transfers, transfers.toPeriodId);
       }
     },
     beforeOpen: (details) async {

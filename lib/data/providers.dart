@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/home_summary.dart';
+import '../domain/pocket_config.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
@@ -168,4 +170,99 @@ class OnboardingController extends Notifier<OnboardingDraft> {
 final onboardingProvider =
     NotifierProvider<OnboardingController, OnboardingDraft>(
       OnboardingController.new,
+    );
+
+// ---------------------------------------------------------- atur kantong
+
+/// Isian layar Atur Kantong (20–22) sebelum disimpan.
+class PocketDraft {
+  const PocketDraft({
+    required this.original,
+    required this.current,
+    this.lastEditedId,
+  });
+
+  final PocketSetup original;
+  final PocketSetup current;
+
+  /// Kantong terakhir diubah → disorot kalau alokasi belum pas (layar 23).
+  final String? lastEditedId;
+
+  bool get dirty => !listEquals(original.pockets, current.pockets);
+
+  PocketConfig pocket(String id) =>
+      current.pockets.firstWhere((p) => p.id == id);
+
+  PocketDraft copyWith({PocketSetup? current, String? lastEditedId}) =>
+      PocketDraft(
+        original: original,
+        current: current ?? this.current,
+        lastEditedId: lastEditedId ?? this.lastEditedId,
+      );
+}
+
+class PocketDraftController extends AsyncNotifier<PocketDraft> {
+  @override
+  Future<PocketDraft> build() async {
+    final setup = await ref.read(budgetRepositoryProvider).loadPocketSetup();
+    return PocketDraft(original: setup, current: setup);
+  }
+
+  void _setPockets(List<PocketConfig> pockets, {String? edited}) {
+    final d = state.value;
+    if (d == null) return;
+    state = AsyncData(
+      d.copyWith(
+        current: d.current.copyWith(pockets: pockets),
+        lastEditedId: edited,
+      ),
+    );
+  }
+
+  /// Ubah satu kantong (layar 21 & 22).
+  void updatePocket(PocketConfig pocket) {
+    final d = state.value;
+    if (d == null) return;
+    _setPockets([
+      for (final p in d.current.pockets) p.id == pocket.id ? pocket : p,
+    ], edited: pocket.id);
+  }
+
+  /// Tab Persen / Nominal di layar 20: semua kantong pindah satuan.
+  void setAllMode(AllocationMode mode) {
+    final d = state.value;
+    if (d == null) return;
+    _setPockets([
+      for (final p in d.current.pockets) p.withMode(mode, d.current.base),
+    ]);
+  }
+
+  /// [newIndex] = posisi akhir setelah item dipindah.
+  void reorder(int oldIndex, int newIndex) {
+    final d = state.value;
+    if (d == null) return;
+    final list = [...d.current.pockets];
+    final moved = list.removeAt(oldIndex);
+    list.insert(newIndex, moved);
+    _setPockets(list);
+  }
+
+  /// "Rapiin otomatis" (layar 23).
+  void autoBalance() {
+    final d = state.value;
+    if (d == null) return;
+    _setPockets(balancePockets(d.current.pockets, d.current.base));
+  }
+
+  Future<void> save() async {
+    final d = state.value;
+    if (d == null) return;
+    await ref.read(budgetRepositoryProvider).savePockets(d.current.pockets);
+    state = AsyncData(PocketDraft(original: d.current, current: d.current));
+  }
+}
+
+final pocketDraftProvider =
+    AsyncNotifierProvider.autoDispose<PocketDraftController, PocketDraft>(
+      PocketDraftController.new,
     );
