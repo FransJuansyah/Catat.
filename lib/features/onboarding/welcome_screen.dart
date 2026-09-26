@@ -57,7 +57,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 28),
                     Text(
-                      'Gajian aman,\ncatat tanpa ribet.',
+                      'Duit masuk,\nlangsung kebagi.',
                       style: AppText.style(
                         34,
                         AppText.w800,
@@ -67,7 +67,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Scan struk, beres. Gajimu otomatis kebagi ke 3 kantong biar nggak boncos.',
+                      'Gaji bulanan, uang jajan, atau hasil kerja harian. Semua otomatis kebagi ke 3 kantong.',
                       style: AppText.style(
                         15,
                         AppText.w500,
@@ -175,174 +175,170 @@ class _SalarySplitIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, box) {
-        final w = math.min(box.maxWidth, 350.0);
-        final s = w / 350;
-        const cardH = 68.0;
-        final lineH = 60 * s;
-        final tileW = 108 * s;
-        final tileH = 262 * s - cardH - lineH;
-        return Center(
-          child: SizedBox(
-            width: w,
-            height: cardH + lineH + tileH,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  top: cardH,
-                  left: 0,
-                  right: 0,
-                  height: lineH,
-                  child: CustomPaint(
-                    painter: _FlowLinesPainter(
-                      tileCenters: [57 * s, 175 * s, 293 * s],
-                    ),
-                  ),
+    // Lebar dari layar, bukan LayoutBuilder: layar ini memakai
+    // SliverFillRemaining yang mengukur tinggi intrinsik isinya.
+    final available = MediaQuery.sizeOf(context).width - AppSpace.screenX * 2;
+    final w = math.min(available, 350.0);
+    final s = w / 350;
+    const cardH = 68.0;
+    final lineH = 60 * s;
+    final tileW = 108 * s;
+    final tileH = 262 * s - cardH - lineH;
+    return Center(
+      child: SizedBox(
+        width: w,
+        height: cardH + lineH + tileH,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: cardH,
+              left: 0,
+              right: 0,
+              height: lineH,
+              child: CustomPaint(
+                painter: _FlowLinesPainter(
+                  tileCenters: [57 * s, 175 * s, 293 * s],
                 ),
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: Container(
-                    height: cardH,
-                    padding: const EdgeInsets.fromLTRB(14, 14, 20, 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x2E0E0E10),
-                          offset: Offset(0, 10),
-                          blurRadius: 24,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const IconBadge(
-                          icon: LucideIcons.wallet,
-                          background: AppColors.lime,
-                          color: AppColors.ink,
-                          size: 40,
-                          iconSize: 20,
-                          square: true,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gajian masuk',
-                              style: AppText.style(
-                                12,
-                                AppText.w500,
-                                color: AppColors.faint,
-                              ),
-                            ),
-                            Text(
-                              '+Rp 6.500.000',
-                              style: AppText.style(
-                                20,
-                                AppText.w800,
-                                color: Colors.white,
-                                spacingPercent: -2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: -12,
-                  right: w * 0.12,
-                  child: Transform.rotate(
-                    angle: -6 * math.pi / 180,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.lime,
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x1F0E0E10),
-                            offset: Offset(0, 4),
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            LucideIcons.check,
-                            size: 12,
-                            color: AppColors.ink,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Otomatis',
-                            style: AppText.style(11, AppText.w800),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                for (final (i, (icon, pct, name, color)) in _tiles.indexed)
-                  Positioned(
-                    top: cardH + lineH,
-                    left: [3.0, 121.0, 239.0][i] * s,
-                    width: tileW,
-                    height: tileH,
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: PocketVisuals.soft(color),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IconBadge(
-                            icon: icon,
-                            background: Colors.white,
-                            color: color,
-                            size: 34,
-                            iconSize: 17,
-                          ),
-                          const Spacer(),
-                          Text(
-                            pct,
-                            style: AppText.style(
-                              24,
-                              AppText.w800,
-                              color: color,
-                              spacingPercent: -3,
-                            ),
-                          ),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              name,
-                              style: AppText.style(13, AppText.w800),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+            Align(
+              alignment: Alignment.topCenter,
+              child: Container(
+                height: cardH,
+                padding: const EdgeInsets.fromLTRB(14, 10, 20, 10),
+                decoration: BoxDecoration(
+                  color: AppColors.ink,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x2E0E0E10),
+                      offset: Offset(0, 10),
+                      blurRadius: 24,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const IconBadge(
+                      icon: LucideIcons.wallet,
+                      background: AppColors.lime,
+                      color: AppColors.ink,
+                      size: 40,
+                      iconSize: 20,
+                      square: true,
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Duit masuk',
+                          style: AppText.style(
+                            12,
+                            AppText.w500,
+                            color: AppColors.faint,
+                          ),
+                        ),
+                        Text(
+                          '+Rp 6.500.000',
+                          style: AppText.style(
+                            20,
+                            AppText.w800,
+                            color: Colors.white,
+                            spacingPercent: -2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: -12,
+              right: w * 0.12,
+              child: Transform.rotate(
+                angle: -6 * math.pi / 180,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.lime,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x1F0E0E10),
+                        offset: Offset(0, 4),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.check,
+                        size: 12,
+                        color: AppColors.ink,
+                      ),
+                      const SizedBox(width: 4),
+                      Text('Otomatis', style: AppText.style(11, AppText.w800)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            for (final (i, (icon, pct, name, color)) in _tiles.indexed)
+              Positioned(
+                top: cardH + lineH,
+                left: [3.0, 121.0, 239.0][i] * s,
+                width: tileW,
+                height: tileH,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: PocketVisuals.soft(color),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IconBadge(
+                        icon: icon,
+                        background: Colors.white,
+                        color: color,
+                        size: 34,
+                        iconSize: 17,
+                      ),
+                      const Spacer(),
+                      Text(
+                        pct,
+                        style: AppText.style(
+                          24,
+                          AppText.w800,
+                          color: color,
+                          spacingPercent: -3,
+                        ),
+                      ),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          name,
+                          style: AppText.style(13, AppText.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -331,9 +331,14 @@ class _QuickActions extends StatelessWidget {
                     iconSize: 20,
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    title,
-                    style: AppText.style(15, AppText.w800, color: titleColor),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      style: AppText.style(15, AppText.w800, color: titleColor),
+                    ),
                   ),
                   Text(
                     sub,
@@ -347,32 +352,36 @@ class _QuickActions extends StatelessWidget {
       );
     }
 
-    return Row(
-      children: [
-        tile(
-          icon: LucideIcons.scanLine,
-          title: 'Scan struk',
-          sub: 'Catat pengeluaran',
-          bg: AppColors.lime,
-          badgeBg: AppColors.ink,
-          iconColor: AppColors.lime,
-          titleColor: AppColors.ink,
-          subColor: AppColors.limeText,
-          route: '/scan',
-        ),
-        const SizedBox(width: 10),
-        tile(
-          icon: LucideIcons.circlePlus,
-          title: 'Tambah pemasukan',
-          sub: 'Baru dapat duit?',
-          bg: AppColors.ink,
-          badgeBg: AppColors.darkSurface,
-          iconColor: AppColors.lime,
-          titleColor: Colors.white,
-          subColor: AppColors.faint,
-          route: '/pemasukan',
-        ),
-      ],
+    // Tinggi kedua tile selalu sama walau teksnya beda panjang.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          tile(
+            icon: LucideIcons.scanLine,
+            title: 'Scan struk',
+            sub: 'Catat pengeluaran',
+            bg: AppColors.lime,
+            badgeBg: AppColors.ink,
+            iconColor: AppColors.lime,
+            titleColor: AppColors.ink,
+            subColor: AppColors.limeText,
+            route: '/scan',
+          ),
+          const SizedBox(width: 10),
+          tile(
+            icon: LucideIcons.circlePlus,
+            title: 'Tambah pemasukan',
+            sub: 'Baru dapat duit?',
+            bg: AppColors.ink,
+            badgeBg: AppColors.darkSurface,
+            iconColor: AppColors.lime,
+            titleColor: Colors.white,
+            subColor: AppColors.faint,
+            route: '/pemasukan',
+          ),
+        ],
+      ),
     );
   }
 }
