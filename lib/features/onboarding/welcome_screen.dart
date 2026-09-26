@@ -17,7 +17,7 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    void start() => context.push('/atur-gaji');
+    void start() => context.push('/sumber-uang');
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(

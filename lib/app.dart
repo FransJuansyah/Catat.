@@ -8,8 +8,13 @@ import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
 import 'features/expense/saved_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/income/income_form_screen.dart';
+import 'features/income/income_saved_screen.dart';
 import 'features/notes/notes_screen.dart';
+import 'features/onboarding/allowance_setup_screen.dart';
+import 'features/onboarding/irregular_setup_screen.dart';
 import 'features/onboarding/salary_setup_screen.dart';
+import 'features/onboarding/source_screen.dart';
 import 'features/onboarding/splash_screen.dart';
 import 'features/onboarding/template_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
@@ -22,7 +27,27 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
     GoRoute(path: '/masuk', builder: (_, _) => const WelcomeScreen()),
+    GoRoute(path: '/sumber-uang', builder: (_, _) => const SourceScreen()),
     GoRoute(path: '/atur-gaji', builder: (_, _) => const SalarySetupScreen()),
+    GoRoute(
+      path: '/atur-jajan',
+      builder: (_, _) => const AllowanceSetupScreen(),
+    ),
+    GoRoute(
+      path: '/atur-penghasilan',
+      builder: (_, _) => const IrregularSetupScreen(),
+    ),
+    GoRoute(
+      path: '/pemasukan',
+      builder: (_, state) => IncomeFormScreen(
+        initialDate: DateTime.tryParse(state.uri.queryParameters['date'] ?? ''),
+      ),
+    ),
+    GoRoute(
+      path: '/pemasukan-masuk/:id',
+      builder: (_, state) =>
+          IncomeSavedScreen(incomeId: state.pathParameters['id']!),
+    ),
     GoRoute(path: '/pilih-template', builder: (_, _) => const TemplateScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),

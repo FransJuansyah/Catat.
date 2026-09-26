@@ -7,8 +7,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/amount_keypad.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../data/providers.dart';
+import '../../domain/types.dart';
 import '../../domain/views.dart';
 
 /// Layar 18 · Gajian Masuk. Muncul sekali tiap periode gaji baru.
@@ -42,7 +44,9 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
   Future<void> _fillSalary(PaydayInfo info) async {
     final value = await showAmountSheet(
       context,
-      title: 'Gaji bulan ini',
+      title: info.mode == IncomeMode.allowance
+          ? 'Uang jajan kali ini'
+          : 'Gaji bulan ini',
       confirmLabel: 'Masukin gaji',
     );
     if (value == null) return;
@@ -138,7 +142,9 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
       const Spacer(),
       _header(info),
       Text(
-        'Gajian masuk!',
+        info.mode == IncomeMode.allowance
+            ? 'Uang jajan masuk!'
+            : 'Gajian masuk!',
         style: AppText.style(
           32,
           AppText.w800,
@@ -218,9 +224,10 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
         ),
       ),
       const Spacer(),
-      _LimeButton(
+      AppButton(
         label: 'Mantap, lanjut',
-        busy: _busy,
+        loading: _busy,
+        style: AppButtonStyle.lime,
         onPressed: () => _continue(info),
       ),
     ],
@@ -231,7 +238,9 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
       const Spacer(),
       _header(info),
       Text(
-        'Gajian udah masuk?',
+        info.mode == IncomeMode.allowance
+            ? 'Uang jajan udah masuk?'
+            : 'Gajian udah masuk?',
         style: AppText.style(
           32,
           AppText.w800,
@@ -246,8 +255,11 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
         style: AppText.style(14, AppText.w500, color: AppColors.faint),
       ),
       const Spacer(),
-      _LimeButton(
-        label: 'Isi gaji bulan ini',
+      AppButton(
+        label: info.mode == IncomeMode.allowance
+            ? 'Isi uang jajan'
+            : 'Isi gaji bulan ini',
+        style: AppButtonStyle.lime,
         onPressed: () => _fillSalary(info),
       ),
       const SizedBox(height: 10),
@@ -260,35 +272,4 @@ class _PaydayScreenState extends ConsumerState<PaydayScreen> {
       ),
     ],
   );
-}
-
-class _LimeButton extends StatelessWidget {
-  const _LimeButton({
-    required this.label,
-    required this.onPressed,
-    this.busy = false,
-  });
-
-  final String label;
-  final VoidCallback onPressed;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: AppSize.buttonHeight,
-      child: Material(
-        color: AppColors.lime,
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: busy ? null : onPressed,
-          child: Center(
-            child: Text(label, style: AppText.style(16, AppText.w700)),
-          ),
-        ),
-      ),
-    );
-  }
 }

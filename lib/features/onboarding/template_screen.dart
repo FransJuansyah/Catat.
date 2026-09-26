@@ -10,6 +10,7 @@ import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../data/providers.dart';
 import '../../domain/templates.dart';
+import '../../domain/types.dart';
 
 /// Layar 19 · Pilih Template Kantong (langkah 3 dari 3 onboarding).
 class TemplateScreen extends ConsumerStatefulWidget {
@@ -26,7 +27,10 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     setState(() => _saving = true);
     try {
       await ref.read(onboardingProvider.notifier).finish();
-      if (mounted) context.go('/gajian-masuk');
+      if (!mounted) return;
+      // Penghasilan tidak tetap belum punya pemasukan → langsung ke Beranda.
+      final mode = ref.read(onboardingProvider).mode;
+      context.go(mode == IncomeMode.irregular ? '/beranda' : '/gajian-masuk');
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -55,7 +59,7 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppTopBar(title: 'Langkah 3 dari 3'),
+                    const AppTopBar(title: 'Langkah 4 dari 4'),
                     const SizedBox(height: 14),
                     Text(
                       'Mau bagi duit\ngaya apa?',
@@ -76,11 +80,11 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    for (final t in PocketTemplates.all) ...[
+                    for (final t in PocketTemplates.forMode(draft.mode)) ...[
                       _TemplateCard(
                         template: t,
                         selected: t == draft.template,
-                        popular: t == PocketTemplates.klasik,
+                        popular: t == PocketTemplates.forMode(draft.mode).first,
                         onTap: () => ref
                             .read(onboardingProvider.notifier)
                             .setTemplate(t),
