@@ -145,14 +145,17 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 ### Kustomisasi kantong & detail lainnya
 | # | Layar | Isi kunci |
 |---|---|---|
-| 19 | Pilih template | Klasik 50/20/30 (Populer), Anak Kos 60/15/25, Pejuang Nabung 45/35/20, Bikin sendiri |
-| 20 | Atur kantong | Ringkasan "100% teralokasi", mode Persen/Nominal, daftar kantong (drag handle, % pill), tips |
-| 21 | Edit kantong | Preview, input nama (maks 20 karakter), 8 ikon, 7 warna, baris Jatah & rentang |
+| 19 | Pilih template | Klasik 50/20/30 (Populer), Anak Kos 60/15/25, Pejuang Nabung 45/35/20, Bikin sendiri ("2 sampai 6 kantong, atur sesukamu" → 43). Pakai template ini → 42 |
+| 20 | Atur kantong | Ringkasan "100% teralokasi", mode Persen/Nominal, daftar kantong (drag handle, % pill), kartu putus-putus **Tambah kantong** (hilang saat sudah 6), tips |
+| 21 | Edit kantong | Top bar dengan ikon hapus merah (mati saat tinggal 2 kantong) → 45. Preview (subjudul = jenis), input nama (maks 20 karakter), 8 ikon, 7 warna, **Jenis** (Wajib / Darurat / Keinginan), baris Jatah & rentang. Juga dipakai untuk kantong baru |
 | 22 | Atur jatah & rentang | Nominal besar, slider %, chip cepat, **rentang min–maks**, aturan (ingetin < 20%, sisa → Dana Darurat) |
 | 23 | Alokasi kelebihan | State error: 110%, kartu merah, "Rapiin otomatis", tombol Simpan disabled |
 | 24 | Kantong hampir habis | Bottom sheet di atas Beranda: tinggal 15%, Pindahin / Oke siap hemat |
 | 25 | Pindahin saldo | Dari → Ke (kantong), nominal, chip cepat, peringatan dana darurat |
 | 26 | Catatan kosong | Empty state "Nggak ada jajan hari ini!" |
+| 42 | Uang kamu sekarang (onboarding, langkah 5 dari 5) | "Uang kamu sekarang berapa?", total rekening + e-wallet + tunai, nominal besar + keypad, kartu "Langsung dibagi ke N kantong" (bar + persen · nominal), info gajian berikutnya, Mulai catat → 35. Saldo awal ini yang dibagi ke kantong, bukan gaji penuh; gajian berikutnya dibagi normal |
+| 43 | Bikin kantong sendiri (onboarding) | Ringkasan "100% teralokasi" + bar, "N kantong · Maks 6", daftar kantong (ikon, nama, jenis · nominal, % pill) → 21, kartu Tambah kantong, Pakai kantong ini → 42 |
+| 45 | Hapus kantong | Bottom sheet di atas 21: "Hapus <nama>?", sisa saldo & jumlah catatan dipindah ke kantong pilihan (chip), Hapus & pindahin (merah) / Batal |
 | 32 | Beranda (penghasilan tidak tetap) | Kartu "Saldo kamu sekarang" + "Masuk bulan ini", 2 kartu cepat Scan struk & Tambah pemasukan. **Tanpa** tombol "+ Pemasukan" di kartu saldo (dobel dengan kartu Tambah pemasukan; keputusan 26 Sep 2026, PNG lama masih menampilkannya) |
 
 ---
@@ -163,7 +166,7 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 User { id, nama, email, avatar }
 Gaji { userId, nominalBersih, tanggalGajian (1–31), autoTambah: bool, slipUrl? }
 Kantong {
-  id, userId, tipe: wajib|darurat|keinginan,   // tipe tetap, dipakai laporan
+  id, userId, tipe: wajib|darurat|keinginan,   // "Jenis", dipilih user; dipakai tebak scan, peringatan darurat & laporan
   nama (≤20), ikon, warna, urutan,
   mode: persen|nominal, persen?, nominal?,
   rentangMin?, rentangMaks?,
@@ -177,7 +180,7 @@ Transaksi {
 }
 PindahSaldo { id, userId, dariKantongId, keKantongId, nominal, tanggal }
 ```
-Aturan: total alokasi kantong **harus = 100%** (atau = gaji jika mode nominal) sebelum bisa disimpan (layar 23).
+Aturan: jumlah kantong **2 sampai 6** (keputusan 27 Sep 2026). Menghapus kantong memindahkan sisa saldo & riwayat catatannya ke kantong lain, tidak ada data yang hilang. Total alokasi kantong **harus = 100%** (atau = gaji jika mode nominal) sebelum bisa disimpan (layar 23).
 
 ---
 
