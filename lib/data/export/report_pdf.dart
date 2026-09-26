@@ -285,7 +285,7 @@ Future<PdfReport> buildReportPdf(
                     e.title,
                     if (e.merchant != null && e.merchant != e.title)
                       e.merchant!,
-                    if (e.source == ExpenseSource.scan) 'scan',
+                    if (e.source != ExpenseSource.manual) e.source.name,
                     if (e.items.isNotEmpty)
                       e.items.map((i) => '${i.name} x${i.qty}').join(', '),
                   ].join(' · '),

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import '../../core/format.dart';
 import '../../domain/pocket_config.dart';
 import '../../domain/report.dart';
-import '../../domain/types.dart';
 import 'xlsx_writer.dart';
 
 /// Laporan Excel: Ringkasan, Pengeluaran, Pemasukan (bisa diolah lagi).
@@ -63,7 +62,7 @@ Uint8List buildReportXlsx(ReportData data, {required DateTime createdAt}) {
         e.pocket.name,
         pocketTypeLabel(e.pocket.type),
         e.amount,
-        e.source == ExpenseSource.scan ? 'Scan struk' : 'Manual',
+        e.source.label,
         e.items.isEmpty
             ? null
             : e.items.map((i) => '${i.name} x${i.qty} (${i.price})').join('; '),

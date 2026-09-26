@@ -11,6 +11,7 @@ import '../../core/widgets/app_top_bar.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
+import '../../domain/types.dart';
 
 /// Layar 11 · Catat Manual. Dengan [editId] berfungsi sebagai form ubah.
 class ExpenseFormScreen extends ConsumerStatefulWidget {
@@ -19,11 +20,27 @@ class ExpenseFormScreen extends ConsumerStatefulWidget {
     this.initialDate,
     this.initialPocketId,
     this.editId,
+    this.initialAmount,
+    this.initialTitle,
+    this.initialPocketType,
+    this.initialTime,
+    this.source = ExpenseSource.manual,
   });
 
   final DateTime? initialDate;
   final String? initialPocketId;
   final String? editId;
+
+  /// Isian awal dari notifikasi bank (catat otomatis).
+  final int? initialAmount;
+  final String? initialTitle;
+
+  /// Tebakan kantong: dipilih kantong pertama bertipe ini.
+  final PocketType? initialPocketType;
+
+  /// Waktu transaksi persis (dipakai kalau tanggal tidak diubah).
+  final DateTime? initialTime;
+  final ExpenseSource source;
 
   @override
   ConsumerState<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
@@ -45,8 +62,13 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   @override
   void initState() {
     super.initState();
-    _date = dateOnly(widget.initialDate ?? ref.read(clockProvider)());
+    _date = dateOnly(
+      widget.initialTime ?? widget.initialDate ?? ref.read(clockProvider)(),
+    );
     _pocketId = widget.initialPocketId;
+    _amount = widget.initialAmount ?? 0;
+    _title.text = widget.initialTitle ?? '';
+    _originalTime = widget.initialTime;
     if (_isEdit) _loadForEdit();
   }
 
@@ -90,6 +112,8 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
   DateTime _occurredAt() {
     final now = ref.read(clockProvider)();
+    final original = _originalTime;
+    if (original != null && _date == dateOnly(original)) return original;
     if (_date == dateOnly(now) && !_isEdit) return now;
     final t = _originalTime ?? DateTime(_date.year, _date.month, _date.day, 12);
     return DateTime(_date.year, _date.month, _date.day, t.hour, t.minute);
@@ -119,6 +143,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           amount: _amount,
           title: title,
           occurredAt: _occurredAt(),
+          source: widget.source,
         );
         if (mounted) context.pushReplacement('/tercatat/$id');
       }
@@ -137,6 +162,12 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   Widget build(BuildContext context) {
     final pockets =
         ref.watch(homeSummaryProvider).value?.pockets ?? const <PocketView>[];
+    if (_pocketId == null && widget.initialPocketType != null) {
+      _pocketId = pockets
+          .where((p) => p.type == widget.initialPocketType)
+          .firstOrNull
+          ?.id;
+    }
     final selected = pockets.where((p) => p.id == _pocketId).firstOrNull;
     final caretColor = selected == null ? AppColors.ink : Color(selected.color);
     final today = dateOnly(ref.watch(clockProvider)());

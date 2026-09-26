@@ -35,7 +35,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ref.read(budgetRepositoryProvider).isSetUp(),
       Future<void>.delayed(const Duration(milliseconds: 1100)),
     ).wait;
-    if (mounted) context.go(setUp ? '/beranda' : '/masuk');
+    if (!mounted) return;
+    context.go(setUp ? '/beranda' : '/masuk');
+    if (setUp) ref.read(appReadyProvider.notifier).markReady();
   }
 
   @override

@@ -13,7 +13,6 @@ import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
-import '../../domain/types.dart';
 import '../../domain/views.dart';
 
 /// Layar 13 · Detail Transaksi.
@@ -72,12 +71,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               _InfoRow('Jam', clock(detail.entry.occurredAt)),
                               if (detail.merchant != null)
                                 _InfoRow('Toko', detail.merchant!),
-                              _InfoRow(
-                                'Sumber',
-                                detail.entry.source == ExpenseSource.scan
-                                    ? 'Scan struk'
-                                    : 'Catat manual',
-                              ),
+                              _InfoRow('Sumber', detail.entry.source.label),
                             ],
                           ),
                           if (detail.items.isNotEmpty) ...[

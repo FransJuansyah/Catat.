@@ -16,9 +16,22 @@ import '../../domain/pay_period.dart';
 
 /// Layar 30 · Tambah Pemasukan. Nominal langsung dibagi ke kantong.
 class IncomeFormScreen extends ConsumerStatefulWidget {
-  const IncomeFormScreen({super.key, this.initialDate});
+  const IncomeFormScreen({
+    super.key,
+    this.initialDate,
+    this.initialAmount,
+    this.initialTitle,
+    this.initialTime,
+  });
 
   final DateTime? initialDate;
+
+  /// Isian awal dari notifikasi bank (catat otomatis).
+  final int? initialAmount;
+  final String? initialTitle;
+
+  /// Waktu transaksi persis (dipakai kalau tanggal tidak diubah).
+  final DateTime? initialTime;
 
   @override
   ConsumerState<IncomeFormScreen> createState() => _IncomeFormScreenState();
@@ -33,7 +46,11 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
   @override
   void initState() {
     super.initState();
-    _date = dateOnly(widget.initialDate ?? ref.read(clockProvider)());
+    _date = dateOnly(
+      widget.initialTime ?? widget.initialDate ?? ref.read(clockProvider)(),
+    );
+    _amount = widget.initialAmount ?? 0;
+    _title.text = widget.initialTitle ?? '';
   }
 
   @override
@@ -60,7 +77,10 @@ class _IncomeFormScreenState extends ConsumerState<IncomeFormScreen> {
   Future<void> _save() async {
     if (_amount <= 0) return;
     final now = ref.read(clockProvider)();
-    final when = _date == dateOnly(now)
+    final original = widget.initialTime;
+    final when = original != null && _date == dateOnly(original)
+        ? original
+        : _date == dateOnly(now)
         ? now
         : DateTime(_date.year, _date.month, _date.day, 12);
     final title = _title.text.trim().isEmpty ? 'Pemasukan' : _title.text.trim();

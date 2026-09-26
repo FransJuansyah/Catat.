@@ -570,6 +570,74 @@ class BudgetRepository {
     });
   }
 
+  /// Catatan yang dibuat user sendiri (manual / scan / pemasukan / gajian
+  /// otomatis) bernominal persis sama menjelang [around]. Dipakai catat
+  /// otomatis: SMS & email bank bisa telat sampai 48 jam, sementara user
+  /// sudah catat duluan (scan memakai jam di struk = jam transaksi).
+  /// Catatan dari notifikasi sendiri
+  /// tidak dihitung (jajan rutin berharga sama tetap tercatat), dan [exclude]
+  /// = catatan yang sudah dipasangkan dengan notifikasi lain.
+  /// Mengembalikan id catatannya, atau null.
+  Future<String?> findUserEntry({
+    required bool income,
+    required int amount,
+    required DateTime around,
+    Set<String> exclude = const {},
+    Duration before = const Duration(hours: 48),
+    Duration after = const Duration(minutes: 30),
+  }) async {
+    final from = around.subtract(before);
+    final to = around.add(after);
+    if (income) {
+      final t = _db.incomes;
+      final rows =
+          await (_db.selectOnly(t)
+                ..addColumns([t.id])
+                ..where(
+                  t.deletedAt.isNull() &
+                      t.amount.equals(amount) &
+                      t.occurredAt.isBetweenValues(from, to),
+                ))
+              .get();
+      for (final r in rows) {
+        final id = r.read(t.id)!;
+        if (!exclude.contains(id)) return id;
+      }
+      // Gajian / uang jajan otomatis (awal periode) = SMS "dana masuk" gaji.
+      final p = _db.periods;
+      final periods =
+          await (_db.selectOnly(p)
+                ..addColumns([p.id])
+                ..where(
+                  p.deletedAt.isNull() &
+                      p.salary.equals(amount) &
+                      p.startDate.isBetweenValues(dateOnly(from), to),
+                ))
+              .get();
+      for (final r in periods) {
+        final id = 'periode:${r.read(p.id)!}';
+        if (!exclude.contains(id)) return id;
+      }
+      return null;
+    }
+    final t = _db.expenses;
+    final rows =
+        await (_db.selectOnly(t)
+              ..addColumns([t.id])
+              ..where(
+                t.deletedAt.isNull() &
+                    t.source.equalsValue(ExpenseSource.notif).not() &
+                    t.amount.equals(amount) &
+                    t.occurredAt.isBetweenValues(from, to),
+              ))
+            .get();
+    for (final r in rows) {
+      final id = r.read(t.id)!;
+      if (!exclude.contains(id)) return id;
+    }
+    return null;
+  }
+
   /// Hapus lunak (tetap tersimpan untuk sinkronisasi).
   Future<void> deleteExpense(String id) async {
     final now = _now();

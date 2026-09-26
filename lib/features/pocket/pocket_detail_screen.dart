@@ -11,7 +11,6 @@ import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
 import '../../core/widgets/progress_track.dart';
 import '../../data/providers.dart';
-import '../../domain/types.dart';
 import '../../domain/views.dart';
 
 /// Layar 12 · Detail Kantong.
@@ -101,10 +100,7 @@ class PocketDetailScreen extends ConsumerWidget {
                         entry: e,
                         useCategoryIcon: true,
                         subtitle: Text(
-                          [
-                            shortDate(e.occurredAt),
-                            if (e.source == ExpenseSource.scan) 'dari scan',
-                          ].join(' · '),
+                          [shortDate(e.occurredAt), ?e.source.tag].join(' · '),
                           style: AppText.style(
                             12,
                             AppText.w500,

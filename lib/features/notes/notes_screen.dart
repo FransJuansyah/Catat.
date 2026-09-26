@@ -11,7 +11,6 @@ import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/providers.dart';
 import '../../domain/pay_period.dart';
-import '../../domain/types.dart';
 import '../../domain/views.dart';
 
 /// Layar 06 · Catatan Harian & 26 · Catatan Kosong.
@@ -313,10 +312,7 @@ class _NoteSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final extra = [
-      clock(entry.occurredAt),
-      if (entry.source == ExpenseSource.scan) 'dari scan',
-    ].join(' · ');
+    final extra = [clock(entry.occurredAt), ?entry.source.tag].join(' · ');
     return Text.rich(
       TextSpan(
         children: [

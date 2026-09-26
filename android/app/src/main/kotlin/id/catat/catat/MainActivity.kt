@@ -1,11 +1,15 @@
 package id.catat.catat
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -13,8 +17,127 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var autoChannel: MethodChannel? = null
+
+    /// Aksi dari notif catat. / share gambar, menunggu diambil Dart.
+    private var pendingLaunch: Map<String, Any>? = null
+    private var permissionResult: MethodChannel.Result? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        current = java.lang.ref.WeakReference(this)
+        AutoCapture.createChannels(this)
+        pendingLaunch = launchOf(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        launchOf(intent)?.let {
+            pendingLaunch = it
+            autoChannel?.invokeMethod("launch", null)
+        }
+    }
+
+    private fun launchOf(intent: Intent?): Map<String, Any>? {
+        intent ?: return null
+        return when (intent.action) {
+            AutoCapture.ACTION_CAPTURE -> {
+                val id = intent.getStringExtra(AutoCapture.EXTRA_CAPTURE_ID) ?: return null
+                val capture = AutoCapture.take(this, id) ?: return null
+                mapOf("type" to "capture", "capture" to capture)
+            }
+            AutoCapture.ACTION_REMINDER -> mapOf("type" to "reminder")
+            AutoCapture.ACTION_OPEN -> {
+                val route = intent.getStringExtra(AutoCapture.EXTRA_ROUTE) ?: return null
+                // Tombol "Ubah" tidak menutup notif sendiri.
+                NotificationManagerCompat.from(this).cancel(intent.getIntExtra(AutoCapture.EXTRA_NOTIF_ID, 0))
+                mapOf("type" to "route", "route" to route)
+            }
+            Intent.ACTION_SEND -> {
+                if (intent.type?.startsWith("image/") != true) return null
+                val uri = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                } ?: return null
+                val path = copyShared(uri) ?: return null
+                mapOf("type" to "share", "path" to path)
+            }
+            else -> null
+        }
+    }
+
+    /// Salin gambar yang dibagikan ke cache (URI dari app lain bisa kedaluwarsa).
+    private fun copyShared(uri: Uri): String? = try {
+        val target = File(cacheDir, "bagikan_${System.currentTimeMillis()}.jpg")
+        contentResolver.openInputStream(uri)!!.use { input ->
+            target.outputStream().use { input.copyTo(it) }
+        }
+        target.path
+    } catch (e: Exception) {
+        null
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            permissionResult?.success(AutoCapture.canPostNotifications(this))
+            permissionResult = null
+        }
+    }
+
+    private fun autoStatus() = mapOf(
+        "enabled" to AutoCapture.isEnabled(this),
+        "listenerAccess" to AutoCapture.hasListenerAccess(this),
+        "canNotify" to AutoCapture.canPostNotifications(this),
+        "reminder" to DailyReminder.isOn(this),
+        "reminderHour" to DailyReminder.HOUR,
+    )
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        autoChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/auto")
+            .apply {
+                setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "status" -> result.success(autoStatus())
+                        "setEnabled" -> {
+                            AutoCapture.setEnabled(this@MainActivity, call.argument<Boolean>("on")!!)
+                            result.success(autoStatus())
+                        }
+                        "setReminder" -> {
+                            DailyReminder.set(this@MainActivity, call.argument<Boolean>("on")!!)
+                            result.success(autoStatus())
+                        }
+                        "openAccessSettings" -> {
+                            openListenerSettings()
+                            result.success(true)
+                        }
+                        "requestNotifications" -> {
+                            if (AutoCapture.canPostNotifications(this@MainActivity)) {
+                                result.success(true)
+                            } else {
+                                permissionResult = result
+                                requestPermissions(
+                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                    REQUEST_NOTIFICATIONS,
+                                )
+                            }
+                        }
+                        "takeLaunch" -> {
+                            result.success(pendingLaunch)
+                            pendingLaunch = null
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/downloads")
             .setMethodCallHandler { call, result ->
                 try {
@@ -71,5 +194,39 @@ class MainActivity : FlutterActivity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(Intent.createChooser(intent, "Buka laporan").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /// Android 11+: langsung ke sakelar catat. (beberapa ROM, mis. XOS, salah
+    /// mengarahkan halaman daftar). Versi lama / gagal: halaman daftar.
+    private fun openListenerSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
+                Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                android.content.ComponentName(this, CatatNotificationListener::class.java)
+                    .flattenToString(),
+            )
+            try {
+                startActivity(detail)
+                return
+            } catch (e: Exception) {
+                // lanjut ke halaman daftar
+            }
+        }
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
+
+    override fun onDestroy() {
+        if (current?.get() === this) current = null
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val REQUEST_NOTIFICATIONS = 42
+        private var current: java.lang.ref.WeakReference<MainActivity>? = null
+
+        /// Catatan berubah dari latar belakang → UI yang terbuka muat ulang.
+        fun notifyDataChanged() {
+            current?.get()?.autoChannel?.invokeMethod("dataChanged", null)
+        }
     }
 }

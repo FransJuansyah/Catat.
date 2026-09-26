@@ -77,8 +77,9 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 | **F4 Kustomisasi kantong** ✅ | Atur/edit kantong (nama, ikon, warna), jatah & rentang, validasi 100%, pindah saldo, peringatan hampir habis | 20–25 | Semua aturan kantong jalan & dites |
 | **F5 Scan struk** ✅ (uji akurasi di struk asli berlanjut) | Kamera, ML Kit, parser struk Indonesia (Indomaret, Alfamart, resto, e-wallet), tebak kantong, konfirmasi, simpan foto | 04, 05, 09, 10 | ≥80% struk umum terbaca benar totalnya |
 | **F6 Slip gaji** | Upload foto/PDF slip → baca nominal gaji bersih | 02, 08 | Nominal terisi otomatis, bisa dikoreksi |
+| **F6.5 Catat otomatis** 🚧 | Baca notifikasi m-banking/e-wallet + SMS & email bank (chat tidak pernah dibaca) → **dicatat di belakang layar** tanpa membuka app, notif "Tercatat" + Batalkan/Ubah; buang iklan/OTP/tagihan; anti-dobel dengan catatan manual/scan/gajian (≤48 jam); layar Akun; pengingat 21:00 bila belum catat; share screenshot bukti transfer | 17 (+ baris baru, desain menyusul) | Transaksi nyata tercatat benar tanpa buka app, iklan tidak tercatat |
 | **F7 Laporan & export** ✅ | Laporan bulanan, insight, export PDF/Excel bulanan / 3 bulan / setahun | 07, 14, 15, 16 | File terbuka rapi di HP & laptop |
-| **F8 Akun & sinkron** | Login Google/Email, sync ke Supabase, multi-HP, hapus akun & data, PIN/biometrik, pengingat harian | 01, 17 | Ganti HP → data kembali utuh |
+| **F8 Akun & sinkron** | Login Google/Email, sync ke Supabase, multi-HP, hapus akun & data, PIN/biometrik | 01, 17 | Ganti HP → data kembali utuh |
 | **F9 Siap rilis** | Ikon & nama app ✅, font dibundel ✅, keystore, Crashlytics, kebijakan privasi, Data Safety form, uji tertutup | – | Lolos review & tayang di Play Store |
 
 ---
@@ -104,3 +105,17 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 2. Logika uang & tanggal selalu punya unit test (kasus: tanggal gajian 31 di Februari, alokasi ≠ 100%, transfer, rollover).
 3. Jangan simpan kunci rahasia di kode. `SUPABASE_URL` / `ANON_KEY` lewat `--dart-define` / file env yang di-`.gitignore`.
 4. Setiap perubahan skema DB = migrasi drift + migrasi SQL Supabase.
+
+---
+
+## 6. Catatan untuk dibahas
+
+- **Pengenalan izin & fitur saat pertama pakai** (dicatat 26 Sep 2026, belum dibahas).
+  Banyak user tidak membaca ketentuan setelah install, padahal peduli privasi.
+  Usulan:
+  - Saat daftar / onboarding, jelaskan semua pengaturan & fitur sebelum dipakai.
+  - Tampilkan **checklist akses**: apa saja yang boleh & tidak boleh diakses catat.
+    di HP (notifikasi bank, SMS/email bank, kamera, foto, pengingat), user pilih sendiri.
+  - Tiap item diberi ikon **ⓘ** (lingkaran berisi "i") yang menjelaskan kenapa fitur
+    itu perlu dinyalakan atau boleh dimatikan.
+  - Butuh desain dulu (Figma) sebelum dibangun.

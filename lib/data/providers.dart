@@ -6,6 +6,7 @@ import '../domain/pocket_config.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
+import 'auto_capture.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
 import 'receipt_scanner.dart';
@@ -291,4 +292,30 @@ final monthReportProvider = StreamProvider.autoDispose
 /// Penyusun & penyimpan file laporan. Di-override di test.
 final reportExporterProvider = Provider<ReportExporter>(
   (ref) => const ReportExporter(),
+);
+
+// -------------------------------------------------------- catat otomatis
+
+/// Jembatan notifikasi bank, pengingat & share gambar. Di-override di test.
+final autoCaptureProvider = Provider<AutoCaptureBridge>(
+  (ref) => ChannelAutoCaptureBridge(),
+);
+
+/// Status catat otomatis & pengingat. Di-invalidate saat kembali dari
+/// Pengaturan Android.
+final autoStatusProvider = FutureProvider.autoDispose<AutoStatus>(
+  (ref) => ref.watch(autoCaptureProvider).status(),
+);
+
+/// Splash selesai & user sudah di Beranda → aksi pembukaan (notif / share)
+/// boleh langsung membuka layarnya.
+class AppReadyController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markReady() => state = true;
+}
+
+final appReadyProvider = NotifierProvider<AppReadyController, bool>(
+  AppReadyController.new,
 );

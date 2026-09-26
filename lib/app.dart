@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
+import 'data/auto_capture.dart';
+import 'data/providers.dart';
 import 'data/receipt_scanner.dart';
+import 'domain/types.dart';
+import 'features/account/account_screen.dart';
 import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
 import 'features/expense/saved_screen.dart';
@@ -21,7 +28,6 @@ import 'features/onboarding/splash_screen.dart';
 import 'features/onboarding/template_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
 import 'features/payday/payday_screen.dart';
-import 'features/placeholder_screen.dart';
 import 'features/pocket/pocket_budget_screen.dart';
 import 'features/pocket/pocket_detail_screen.dart';
 import 'features/pocket/pocket_edit_screen.dart';
@@ -53,9 +59,16 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/pemasukan',
-      builder: (_, state) => IncomeFormScreen(
-        initialDate: DateTime.tryParse(state.uri.queryParameters['date'] ?? ''),
-      ),
+      builder: (_, state) {
+        // ?amount=&title=&time= (dari notifikasi uang masuk).
+        final q = state.uri.queryParameters;
+        return IncomeFormScreen(
+          initialDate: DateTime.tryParse(q['date'] ?? ''),
+          initialAmount: int.tryParse(q['amount'] ?? ''),
+          initialTitle: q['title'],
+          initialTime: DateTime.tryParse(q['time'] ?? ''),
+        );
+      },
     ),
     GoRoute(
       path: '/pemasukan-masuk/:id',
@@ -83,11 +96,7 @@ final _router = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/akun',
-              builder: (_, _) =>
-                  const PlaceholderScreen(title: 'Akun', designRef: '17'),
-            ),
+            GoRoute(path: '/akun', builder: (_, _) => const AccountScreen()),
           ],
         ),
       ],
@@ -132,6 +141,18 @@ final _router = GoRouter(
           initialDate: DateTime.tryParse(q['date'] ?? ''),
           initialPocketId: q['pocket'],
           editId: q['edit'],
+          // Dari notifikasi bank: ?amount=&title=&time=&pocketType=&source=
+          initialAmount: int.tryParse(q['amount'] ?? ''),
+          initialTitle: q['title'],
+          initialTime: DateTime.tryParse(q['time'] ?? ''),
+          initialPocketType: PocketType.values
+              .where((t) => t.name == q['pocketType'])
+              .firstOrNull,
+          source:
+              ExpenseSource.values
+                  .where((s) => s.name == q['source'])
+                  .firstOrNull ??
+              ExpenseSource.manual,
         );
       },
     ),
@@ -177,11 +198,62 @@ final _router = GoRouter(
   ],
 );
 
-class CatatApp extends StatelessWidget {
+class CatatApp extends ConsumerStatefulWidget {
   const CatatApp({super.key});
 
   @override
+  ConsumerState<CatatApp> createState() => _CatatAppState();
+}
+
+class _CatatAppState extends ConsumerState<CatatApp> {
+  StreamSubscription<void>? _launches;
+  StreamSubscription<void>? _dataChanges;
+
+  @override
+  void initState() {
+    super.initState();
+    final bridge = ref.read(autoCaptureProvider);
+    // Aplikasi sudah terbuka lalu notif catat. / share diketuk.
+    _launches = bridge.launches.listen((_) {
+      if (ref.read(appReadyProvider)) unawaited(_openLaunch());
+    });
+    // Catat otomatis menulis lewat koneksi DB lain → layar ikut dimuat ulang.
+    _dataChanges = bridge.dataChanges.listen((_) {
+      final db = ref.read(databaseProvider);
+      db.markTablesUpdated([
+        db.expenses,
+        db.expenseItems,
+        db.incomes,
+        db.incomeAllocations,
+      ]);
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_launches?.cancel());
+    unawaited(_dataChanges?.cancel());
+    super.dispose();
+  }
+
+  /// Buka layar untuk aksi pembukaan (notif bank, share gambar, pengingat)
+  /// di atas Beranda.
+  Future<void> _openLaunch() async {
+    final action = await ref.read(autoCaptureProvider).takeLaunch();
+    if (action == null) return;
+    if (action is ShareLaunch) {
+      unawaited(_router.push('/baca-struk', extra: action.imagePath));
+    } else {
+      unawaited(_router.push(launchLocation(action)));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Dibuka dingin dari notif: tunggu Splash sampai di Beranda.
+    ref.listen(appReadyProvider, (_, ready) {
+      if (ready) unawaited(_openLaunch());
+    });
     return MaterialApp.router(
       title: 'catat.',
       debugShowCheckedModeBanner: false,

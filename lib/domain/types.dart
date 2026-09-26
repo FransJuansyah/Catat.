@@ -5,7 +5,27 @@ enum PocketType { wajib, darurat, keinginan }
 enum AllocationMode { percent, nominal }
 
 /// Asal pengeluaran.
-enum ExpenseSource { manual, scan }
+enum ExpenseSource {
+  manual,
+  scan,
+
+  /// Dari notifikasi bank / e-wallet (catat otomatis), dikonfirmasi user.
+  notif;
+
+  /// "Sumber" di detail transaksi & export.
+  String get label => switch (this) {
+    ExpenseSource.manual => 'Catat manual',
+    ExpenseSource.scan => 'Scan struk',
+    ExpenseSource.notif => 'Notifikasi bank',
+  };
+
+  /// Keterangan kecil di daftar catatan ("dari scan"); manual tidak ditandai.
+  String? get tag => switch (this) {
+    ExpenseSource.manual => null,
+    ExpenseSource.scan => 'dari scan',
+    ExpenseSource.notif => 'dari notif',
+  };
+}
 
 /// Dari mana uang user biasanya datang (layar 27).
 enum IncomeMode {
