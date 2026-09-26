@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/theme/tokens.dart';
+import '../core/widgets/app_button.dart';
 import '../core/widgets/icon_badge.dart';
 
 /// Layar sementara untuk fitur yang belum dibangun. `designRef` = nomor layar di design/screens/.
@@ -14,12 +15,18 @@ class PlaceholderScreen extends StatelessWidget {
     required this.designRef,
     this.dark = false,
     this.showBack = false,
+    this.actionLabel,
+    this.actionRoute,
   });
 
   final String title;
   final String designRef;
   final bool dark;
   final bool showBack;
+
+  /// Tombol opsional, mis. "Ketik manual dulu" di layar Scan.
+  final String? actionLabel;
+  final String? actionRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +102,13 @@ class PlaceholderScreen extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                if (actionLabel != null && actionRoute != null)
+                  AppButton(
+                    label: actionLabel!,
+                    icon: LucideIcons.pencil,
+                    style: AppButtonStyle.secondary,
+                    onPressed: () => context.pushReplacement(actionRoute!),
+                  ),
               ],
             ),
           ),

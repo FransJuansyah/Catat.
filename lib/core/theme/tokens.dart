@@ -90,7 +90,18 @@ abstract final class PocketVisuals {
     'gift': LucideIcons.gift,
     'heart': LucideIcons.heart,
     'shirt': LucideIcons.shirt,
+    // Ikon kategori pengeluaran (ditebak dari judul).
+    'bag': LucideIcons.shoppingBag,
+    'food': LucideIcons.utensils,
+    'bolt': LucideIcons.zap,
+    'fuel': LucideIcons.fuel,
+    'car': LucideIcons.car,
+    'phone': LucideIcons.smartphone,
+    'film': LucideIcons.film,
   };
+
+  /// Teks gelap di atas latar lembut warna kantong (mis. kartu tips).
+  static Color deep(Color color) => Color.lerp(color, AppColors.ink, 0.35)!;
 
   static IconData icon(String key) => icons[key] ?? LucideIcons.wallet;
 
