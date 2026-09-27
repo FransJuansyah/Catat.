@@ -15,6 +15,8 @@ Future<T?> _dangerSheet<T>(
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    // Di atas bottom nav (layar Akun ada di dalam shell).
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: AppColors.card,
     shape: const RoundedRectangleBorder(
