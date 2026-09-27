@@ -7,17 +7,26 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/celebration.dart';
 import '../../core/widgets/pocket_card.dart';
 import '../../data/providers.dart';
 import '../../domain/types.dart';
 
-/// Layar 10 · Berhasil Tercatat.
-class SavedScreen extends ConsumerWidget {
+/// Layar 10 · Berhasil Tercatat. Pita meledak dari centang, isi muncul
+/// berurutan.
+class SavedScreen extends ConsumerStatefulWidget {
   const SavedScreen({super.key, required this.expenseId});
 
   final String expenseId;
 
-  static const _confetti = [
+  @override
+  ConsumerState<SavedScreen> createState() => _SavedScreenState();
+}
+
+class _SavedScreenState extends ConsumerState<SavedScreen> {
+  final _check = GlobalKey();
+
+  static const _confetti = <ConfettiPiece>[
     (0.10, 0.18, 14.0, 6.0, 0.35, Color(0xFF6D5DFC)),
     (0.82, 0.15, 10.0, 10.0, 0.8, Color(0xFFFF4F7B)),
     (0.20, 0.36, 8.0, 8.0, 0.0, AppColors.ink),
@@ -28,8 +37,8 @@ class SavedScreen extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(expenseDetailProvider(expenseId)).value;
+  Widget build(BuildContext context) {
+    final detail = ref.watch(expenseDetailProvider(widget.expenseId)).value;
     final pockets = ref.watch(homeSummaryProvider).value?.pockets;
     final pocket = pockets
         ?.where((p) => p.id == detail?.entry.pocket.id)
@@ -45,22 +54,7 @@ class SavedScreen extends ConsumerWidget {
         body: LayoutBuilder(
           builder: (context, box) => Stack(
             children: [
-              for (final (x, y, w, h, angle, color) in _confetti)
-                Positioned(
-                  left: box.maxWidth * x,
-                  top: box.maxHeight * y,
-                  child: Transform.rotate(
-                    angle: angle,
-                    child: Container(
-                      width: w,
-                      height: h,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
+              ConfettiLayer(pieces: _confetti, originKey: _check),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -72,55 +66,74 @@ class SavedScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       const Spacer(),
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: const BoxDecoration(
-                          color: AppColors.ink,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.check,
-                          size: 48,
-                          color: AppColors.lime,
+                      PopIn(
+                        key: _check,
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: const BoxDecoration(
+                            color: AppColors.ink,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            LucideIcons.check,
+                            size: 48,
+                            color: AppColors.lime,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Text(
-                        'Tercatat!',
-                        style: AppText.style(
-                          40,
-                          AppText.w800,
-                          spacingPercent: -4,
+                      Appear(
+                        delay: Appear.step(0),
+                        child: Text(
+                          'Tercatat!',
+                          style: AppText.style(
+                            40,
+                            AppText.w800,
+                            spacingPercent: -4,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
                       if (detail != null)
-                        Text(
-                          '${rupiah(detail.entry.amount)} masuk ke kantong ${detail.entry.pocket.name}',
-                          textAlign: TextAlign.center,
-                          style: AppText.style(
-                            15,
-                            AppText.w700,
-                            color: const Color(0xFF3F4A12),
+                        Appear(
+                          delay: Appear.step(1),
+                          child: Text(
+                            '${rupiah(detail.entry.amount)} masuk ke kantong ${detail.entry.pocket.name}',
+                            textAlign: TextAlign.center,
+                            style: AppText.style(
+                              15,
+                              AppText.w700,
+                              color: const Color(0xFF3F4A12),
+                            ),
                           ),
                         ),
                       const SizedBox(height: 32),
-                      if (pocket != null) PocketCard(pocket: pocket),
+                      if (pocket != null)
+                        Appear(
+                          delay: Appear.step(2),
+                          child: PocketCard(pocket: pocket),
+                        ),
                       const Spacer(),
-                      AppButton(
-                        label: 'Ke beranda',
-                        onPressed: () => context.go('/beranda'),
+                      Appear(
+                        delay: Appear.step(3),
+                        child: AppButton(
+                          label: 'Ke beranda',
+                          onPressed: () => context.go('/beranda'),
+                        ),
                       ),
                       const SizedBox(height: 10),
-                      AppButton(
-                        label: fromScan ? 'Scan struk lagi' : 'Catat lagi',
-                        icon: fromScan
-                            ? LucideIcons.scanLine
-                            : LucideIcons.plus,
-                        style: AppButtonStyle.secondary,
-                        onPressed: () => context.pushReplacement(
-                          fromScan ? '/scan' : '/catat',
+                      Appear(
+                        delay: Appear.step(3),
+                        child: AppButton(
+                          label: fromScan ? 'Scan struk lagi' : 'Catat lagi',
+                          icon: fromScan
+                              ? LucideIcons.scanLine
+                              : LucideIcons.plus,
+                          style: AppButtonStyle.secondary,
+                          onPressed: () => context.pushReplacement(
+                            fromScan ? '/scan' : '/catat',
+                          ),
                         ),
                       ),
                     ],

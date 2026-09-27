@@ -78,6 +78,14 @@ Soft bg = warna yang sama pada opacity ±12% di atas putih.
 ### Shadow
 - Kartu mengambang: `0 8 20 rgba(14,14,16,.08)`
 - FAB Scan: `0 6 14 rgba(14,14,16,.25)`
+
+### Animasi perayaan (layar 10, 16, 18, 31)
+- **Pita meledak** dari ikon utama (centang / dompet): ±36 pita & bulatan jatuh kena gravitasi sambil berputar & "membalik", pudar ~2 dtk. Pita desain melayang dari ikon ke posisinya (easeOutBack) lalu bergoyang pelan & diam setelah 4,5 dtk. Getar ringan saat meledak. Layar 16 tanpa pita.
+- **Ikon utama** masuk memantul (elasticOut, 750 ms).
+- **Isi muncul berurutan**: judul → nominal → keterangan → kartu → tombol, tiap 90 ms, fade + naik 18 px (easeOutCubic, 480 ms).
+- **Nominal masuk** (18, 31) menghitung naik dari 0 (1,1 dtk).
+- HP dengan "Hapus animasi" (aksesibilitas) → semua tampil diam seperti PNG.
+- Komponen: `lib/core/widgets/celebration.dart` (ConfettiLayer, PopIn, Appear, CountUpText).
 - Garis scan lime: glow `0 0 14 spread 2 rgba(212,255,79,.9)`
 
 ### Ikon

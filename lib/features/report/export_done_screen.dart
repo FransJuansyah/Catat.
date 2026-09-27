@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/celebration.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../data/export/report_exporter.dart';
 import '../../data/providers.dart';
@@ -60,71 +61,86 @@ class ExportDoneScreen extends ConsumerWidget {
           child: Column(
             children: [
               const Spacer(),
-              Container(
-                width: 88,
-                height: 88,
-                decoration: const BoxDecoration(
-                  color: AppColors.success,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.check,
-                  size: 44,
-                  color: Colors.white,
+              PopIn(
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: const BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.check,
+                    size: 44,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Laporan siap!',
-                style: AppText.style(34, AppText.w800, spacingPercent: -3),
+              Appear(
+                delay: Appear.step(0),
+                child: Text(
+                  'Laporan siap!',
+                  style: AppText.style(34, AppText.w800, spacingPercent: -3),
+                ),
               ),
               const SizedBox(height: 6),
-              Text(
-                saved
-                    ? 'Udah kesimpen di ${result.location == 'Download' ? 'folder Download' : result.location}'
-                    : 'Belum bisa simpan ke Download, bagikan aja ya',
-                textAlign: TextAlign.center,
-                style: AppText.style(14, AppText.w500, color: AppColors.muted),
+              Appear(
+                delay: Appear.step(1),
+                child: Text(
+                  saved
+                      ? 'Udah kesimpen di ${result.location == 'Download' ? 'folder Download' : result.location}'
+                      : 'Belum bisa simpan ke Download, bagikan aja ya',
+                  textAlign: TextAlign.center,
+                  style: AppText.style(
+                    14,
+                    AppText.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(AppSpace.cardPad),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(AppRadius.cardLg),
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: Row(
-                  children: [
-                    IconBadge(
-                      icon: pdf ? LucideIcons.fileText : LucideIcons.sheet,
-                      background: PocketVisuals.soft(color),
-                      color: color,
-                      size: 48,
-                      square: true,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            result.fileName,
-                            style: AppText.style(15, AppText.w800),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${fileSizeLabel(result.sizeBytes)} · ${result.detail}',
-                            style: AppText.style(
-                              13,
-                              AppText.w500,
-                              color: AppColors.muted,
-                            ),
-                          ),
-                        ],
+              Appear(
+                delay: Appear.step(2),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpace.cardPad),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(AppRadius.cardLg),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Row(
+                    children: [
+                      IconBadge(
+                        icon: pdf ? LucideIcons.fileText : LucideIcons.sheet,
+                        background: PocketVisuals.soft(color),
+                        color: color,
+                        size: 48,
+                        square: true,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              result.fileName,
+                              style: AppText.style(15, AppText.w800),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${fileSizeLabel(result.sizeBytes)} · ${result.detail}',
+                              style: AppText.style(
+                                13,
+                                AppText.w500,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const Spacer(flex: 2),
