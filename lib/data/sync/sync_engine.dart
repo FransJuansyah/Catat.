@@ -43,16 +43,17 @@ class SyncEngine {
   /// Jumlah perubahan yang belum terkirim.
   Future<int> pendingCount() async {
     final count = _db.syncOutbox.rowId.count();
-    final row = await (_db.selectOnly(_db.syncOutbox)..addColumns([count]))
-        .getSingle();
+    final row = await (_db.selectOnly(
+      _db.syncOutbox,
+    )..addColumns([count])).getSingle();
     return row.read(count) ?? 0;
   }
 
   Stream<int> watchPending() {
     final count = _db.syncOutbox.rowId.count();
-    return (_db.selectOnly(_db.syncOutbox)..addColumns([count]))
-        .watchSingle()
-        .map((r) => r.read(count) ?? 0);
+    return (_db.selectOnly(
+      _db.syncOutbox,
+    )..addColumns([count])).watchSingle().map((r) => r.read(count) ?? 0);
   }
 
   // ------------------------------------------------------------------ push
@@ -184,9 +185,8 @@ class SyncEngine {
   }
 
   Future<bool> _pendingLocally(String table, String id) async =>
-      await (_db.select(_db.syncOutbox)..where(
-            (t) => t.tableName_.equals(table) & t.rowId.equals(id),
-          ))
+      await (_db.select(_db.syncOutbox)
+            ..where((t) => t.tableName_.equals(table) & t.rowId.equals(id)))
           .getSingleOrNull() !=
       null;
 
@@ -226,10 +226,7 @@ class SyncEngine {
         final old = await _db
             .customSelect(
               'SELECT id FROM periods WHERE start_date = ? AND id != ?',
-              variables: [
-                Variable(d['start_date']),
-                Variable.withString(r.id),
-              ],
+              variables: [Variable(d['start_date']), Variable.withString(r.id)],
             )
             .getSingleOrNull();
         if (old == null) return;
@@ -296,13 +293,11 @@ class SyncEngine {
 
   // ------------------------------------------------------------------ meta
 
-  Future<int> _lastRev() async =>
-      int.tryParse(await _meta(_revKey) ?? '') ?? 0;
+  Future<int> _lastRev() async => int.tryParse(await _meta(_revKey) ?? '') ?? 0;
 
-  Future<String?> _meta(String key) async =>
-      (await (_db.select(
-        _db.syncMeta,
-      )..where((t) => t.key.equals(key))).getSingleOrNull())?.value;
+  Future<String?> _meta(String key) async => (await (_db.select(
+    _db.syncMeta,
+  )..where((t) => t.key.equals(key))).getSingleOrNull())?.value;
 
   Future<void> _setMeta(String key, String value) => _db
       .into(_db.syncMeta)

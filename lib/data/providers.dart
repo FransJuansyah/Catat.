@@ -543,6 +543,11 @@ class AccountController extends Notifier<AccountState> {
   /// Kode benar → tentukan nasib data HP ini (lihat [LoginStart]).
   Future<LoginStart> verifyCode(String email, String code) async {
     await _service.verifyCode(email, code);
+    return decideStart();
+  }
+
+  /// Sudah masuk (kode atau link di email) → lihat isi akun & HP ini.
+  Future<LoginStart> decideStart() async {
     final remoteHasData = await _service.remote.hasData();
     final localHasData = await ref.read(budgetRepositoryProvider).isSetUp();
     if (!remoteHasData) return LoginStart.upload;

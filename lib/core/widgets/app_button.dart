@@ -34,7 +34,11 @@ class AppButton extends StatelessWidget {
         AppColors.line,
       ),
       (AppButtonStyle.lime, _) => (AppColors.lime, AppColors.ink, null),
-      (AppButtonStyle.dangerFilled, _) => (AppColors.danger, Colors.white, null),
+      (AppButtonStyle.dangerFilled, _) => (
+        AppColors.danger,
+        Colors.white,
+        null,
+      ),
       (AppButtonStyle.danger, _) => (
         AppColors.card,
         AppColors.danger,

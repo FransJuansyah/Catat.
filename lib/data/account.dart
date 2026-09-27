@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'remote/supabase_sync_remote.dart';
@@ -11,8 +12,13 @@ const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 const cloudEnabled = supabaseUrl != '' && supabaseKey != '';
 
+/// Link di email masuk kembali ke app ini (`<applicationId>://masuk`). Harus
+/// terdaftar di Supabase: Authentication → URL Configuration → Redirect URLs.
+String? _loginRedirect;
+
 Future<void> initCloud() async {
   if (!cloudEnabled) return;
+  _loginRedirect = '${(await PackageInfo.fromPlatform()).packageName}://masuk';
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
 }
 
@@ -47,8 +53,13 @@ class SupabaseAccountService implements AccountService {
       : const Stream.empty();
 
   @override
-  Future<void> sendCode(String email) =>
-      _client.auth.signInWithOtp(email: email.trim(), shouldCreateUser: true);
+  /// Email berisi kode 6 angka (template dengan {{ .Token }}, butuh SMTP
+  /// sendiri) atau link masuk (template bawaan) — dua-duanya bisa dipakai.
+  Future<void> sendCode(String email) => _client.auth.signInWithOtp(
+    email: email.trim(),
+    shouldCreateUser: true,
+    emailRedirectTo: _loginRedirect,
+  );
 
   @override
   Future<void> verifyCode(String email, String code) => _client.auth.verifyOTP(

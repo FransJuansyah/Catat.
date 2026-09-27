@@ -241,6 +241,8 @@ class _SignInEmailScreenState extends ConsumerState<SignInEmailScreen> {
 }
 
 /// Layar 48 · Masukin kode 6 angka. Angka ke-6 diketik → langsung dicek.
+/// Email tanpa kode (template bawaan Supabase) berisi link: diketuk → app
+/// terbuka lagi di layar ini & lanjut sendiri.
 class SignInCodeScreen extends ConsumerStatefulWidget {
   const SignInCodeScreen({super.key, required this.email, this.from});
 
@@ -295,11 +297,21 @@ class _SignInCodeScreenState extends ConsumerState<SignInCodeScreen> {
     if (_code.length == _length) unawaited(_verify());
   }
 
-  Future<void> _verify() async {
+  Future<void> _verify() => _signIn(
+    () => ref.read(accountProvider.notifier).verifyCode(widget.email, _code),
+  );
+
+  /// Link "Sign in" di email diketuk → app terbuka lagi & sudah masuk.
+  void _signedInByLink() {
+    if (_checking) return;
+    unawaited(_signIn(ref.read(accountProvider.notifier).decideStart));
+  }
+
+  Future<void> _signIn(Future<LoginStart> Function() check) async {
     final account = ref.read(accountProvider.notifier);
     setState(() => _checking = true);
     try {
-      var start = await account.verifyCode(widget.email, _code);
+      var start = await check();
       if (!mounted) return;
       if (start == LoginStart.conflict) {
         final replace = await showConfirmSheet(
@@ -346,6 +358,9 @@ class _SignInCodeScreenState extends ConsumerState<SignInCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(accountProvider.select((a) => a.signedIn), (was, now) {
+      if (was != true && now) _signedInByLink();
+    });
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
