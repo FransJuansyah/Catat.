@@ -13,7 +13,9 @@ import '../../data/account.dart';
 import '../../data/auto_capture.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
+import '../../domain/pro.dart';
 import '../../domain/types.dart';
+import '../pro/pro_screen.dart';
 import 'account_sheets.dart';
 
 /// Layar 17 / 38 · Akun. 49 = sudah masuk (status sinkron, hapus akun,
@@ -55,6 +57,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final home = ref.watch(homeSummaryProvider).value;
     final status = ref.watch(autoStatusProvider).value ?? const AutoStatus();
     final account = ref.watch(accountProvider);
+    final pro = ref.watch(proStatusProvider).value;
 
     return SafeArea(
       bottom: false,
@@ -77,6 +80,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             )
           else
             _ProfileCard(name: home?.userName ?? '', email: account.email),
+          if (pro != null && (pro.purchased || pro.trialStart != null)) ...[
+            const SizedBox(height: 12),
+            _ProCard(
+              status: pro,
+              price: ref.watch(proProvider).price ?? proPriceFallback,
+              onTap: pro.purchased ? null : () => context.push('/pro'),
+            ),
+          ],
           const SizedBox(height: AppSpace.section),
           _label('Keuangan'),
           ListCard(
@@ -494,6 +505,79 @@ class _SaveToAccountCard extends StatelessWidget {
             onPressed: onTap,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Layar 55 · Kartu catat. Pro: sisa trial / sudah beli.
+class _ProCard extends StatelessWidget {
+  const _ProCard({required this.status, required this.price, this.onTap});
+
+  final ProStatus status;
+  final String price;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, subtitle) = status.purchased
+        ? ('catat. Pro selamanya', 'Scan, catat otomatis & export')
+        : status.inTrial
+        ? ('Trial Pro sisa ${status.daysLeft} hari', 'Buka selamanya $price')
+        : ('Trial Pro habis', 'Buka selamanya $price');
+    return Material(
+      color: AppColors.ink,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.cardPad),
+          child: Row(
+            children: [
+              const IconBadge(
+                icon: LucideIcons.sparkles,
+                background: AppColors.lime,
+                color: AppColors.ink,
+                size: 44,
+                iconSize: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppText.style(
+                        16,
+                        AppText.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: AppText.style(
+                        13,
+                        AppText.w500,
+                        color: status.trialOver
+                            ? AppColors.danger
+                            : AppColors.faint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                status.purchased
+                    ? LucideIcons.circleCheck
+                    : LucideIcons.chevronRight,
+                size: 20,
+                color: AppColors.lime,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

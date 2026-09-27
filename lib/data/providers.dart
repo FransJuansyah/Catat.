@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/home_summary.dart';
 import '../domain/income_schedule.dart';
 import '../domain/pocket_config.dart';
+import '../domain/pro.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
@@ -16,6 +17,7 @@ import 'auto_capture.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
 import 'payslip_reader.dart';
+import 'pro_store.dart';
 import 'receipt_scanner.dart';
 import 'repositories/budget_repository.dart';
 import 'repositories/report_repository.dart';
@@ -616,4 +618,147 @@ class AccountController extends Notifier<AccountState> {
 
 final accountProvider = NotifierProvider<AccountController, AccountState>(
   AccountController.new,
+);
+
+// ------------------------------------------------------------ catat. Pro
+
+final proRepositoryProvider = Provider<ProRepository>(
+  (ref) => ProRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
+/// Toko Google Play. Di-override di test.
+final proStoreProvider = Provider<ProStore>((ref) {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+    return const NoProStore();
+  }
+  final store = PlayProStore();
+  ref.onDispose(store.dispose);
+  return store;
+});
+
+final proStatusProvider = StreamProvider<ProStatus>(
+  (ref) => ref.watch(proRepositoryProvider).watchStatus(),
+);
+
+class ProUiState {
+  const ProUiState({
+    this.price,
+    this.buying = false,
+    this.pending = false,
+    this.message,
+    this.unlockedNow = false,
+  });
+
+  /// Harga dari Google Play; null → pakai harga desain.
+  final String? price;
+  final bool buying;
+
+  /// Bayar belum selesai (mis. menunggu konfirmasi e-wallet).
+  final bool pending;
+  final String? message;
+
+  /// Baru saja berhasil beli → layar 54.
+  final bool unlockedNow;
+
+  ProUiState copyWith({
+    String? price,
+    bool? buying,
+    bool? pending,
+    String? message,
+    bool clearMessage = false,
+    bool? unlockedNow,
+  }) => ProUiState(
+    price: price ?? this.price,
+    buying: buying ?? this.buying,
+    pending: pending ?? this.pending,
+    message: clearMessage ? null : message ?? this.message,
+    unlockedNow: unlockedNow ?? this.unlockedNow,
+  );
+}
+
+/// Pembelian Pro (layar 53). Dibaca sejak app dibuka supaya pembelian yang
+/// selesai saat app tertutup tetap tercatat.
+class ProController extends Notifier<ProUiState> {
+  @override
+  ProUiState build() {
+    final store = ref.watch(proStoreProvider);
+    final sub = store.events.listen(_onEvent);
+    ref.onDispose(sub.cancel);
+    unawaited(_init(store));
+    return const ProUiState();
+  }
+
+  Future<void> _init(ProStore store) async {
+    final price = await store.price();
+    if (price != null) state = state.copyWith(price: price);
+    final status = await ref.read(proRepositoryProvider).status();
+    if (!status.purchased) {
+      try {
+        await store.restore();
+      } on Object {
+        // Offline / bukan dari Play Store: coba lagi lain kali.
+      }
+    }
+  }
+
+  Future<void> _onEvent(ProStoreEvent e) async {
+    switch (e.state) {
+      case ProPurchaseState.purchased:
+        final repo = ref.read(proRepositoryProvider);
+        final before = await repo.status();
+        await repo.markPurchased(e.token ?? '');
+        state = state.copyWith(
+          buying: false,
+          pending: false,
+          clearMessage: true,
+          unlockedNow: !before.purchased && (state.buying || state.pending),
+        );
+      case ProPurchaseState.pending:
+        state = state.copyWith(buying: false, pending: true);
+      case ProPurchaseState.canceled:
+        state = state.copyWith(buying: false, clearMessage: true);
+      case ProPurchaseState.error:
+        state = state.copyWith(
+          buying: false,
+          message: 'Pembayaran gagal. Coba lagi ya.',
+        );
+    }
+  }
+
+  Future<void> buy() async {
+    state = state.copyWith(buying: true, clearMessage: true);
+    try {
+      await ref.read(proStoreProvider).buy();
+    } on ProStoreUnavailable {
+      state = state.copyWith(
+        buying: false,
+        message: 'Pembayaran belum bisa dibuka. Pastikan catat. dipasang dari Play Store.',
+      );
+    } on Object {
+      state = state.copyWith(
+        buying: false,
+        message: 'Pembayaran belum bisa dibuka. Cek internet, lalu coba lagi.',
+      );
+    }
+  }
+
+  Future<void> restore() async {
+    state = state.copyWith(clearMessage: true);
+    try {
+      await ref.read(proStoreProvider).restore();
+      state = state.copyWith(
+        message: 'Kalau pernah beli pakai akun Google ini, Pro kebuka sebentar lagi.',
+      );
+    } on Object {
+      state = state.copyWith(
+        message: 'Belum bisa cek pembelian. Coba lagi ya.',
+      );
+    }
+  }
+
+  void seenUnlocked() => state = state.copyWith(unlockedNow: false);
+}
+
+final proProvider = NotifierProvider<ProController, ProUiState>(
+  ProController.new,
 );

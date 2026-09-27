@@ -77,7 +77,13 @@ class BudgetRepository {
       if (await isSetUp()) throw StateError('Sudah di-setup');
       await _db
           .into(_db.profiles)
-          .insert(ProfilesCompanion.insert(id: _newId(), name: userName));
+          .insert(
+            ProfilesCompanion.insert(
+              id: _newId(),
+              name: userName,
+              trialStartedAt: Value(_now()),
+            ),
+          );
       await _db
           .into(_db.salarySettings)
           .insert(

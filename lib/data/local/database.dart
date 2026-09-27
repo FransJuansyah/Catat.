@@ -21,6 +21,14 @@ mixin SyncedRow on Table {
 
 class Profiles extends Table with SyncedRow {
   TextColumn get name => text()();
+
+  /// catat. Pro: mulai trial 7 hari (selesai daftar / update ke versi
+  /// berbayar). Ikut sinkron → tidak ter-reset dengan install ulang + masuk.
+  DateTimeColumn get trialStartedAt => dateTime().nullable()();
+
+  /// Sudah beli Pro (sekali bayar) & token pembelian Google Play.
+  DateTimeColumn get proPurchasedAt => dateTime().nullable()();
+  TextColumn get proToken => text().nullable()();
 }
 
 /// Pengaturan pemasukan user (nama tabel historis: dulu hanya gaji).
@@ -220,7 +228,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -254,6 +262,15 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(syncOutbox);
         await m.createTable(syncMeta);
         await _createSyncTriggers();
+      }
+      if (from < 7) {
+        await m.addColumn(profiles, profiles.trialStartedAt);
+        await m.addColumn(profiles, profiles.proPurchasedAt);
+        await m.addColumn(profiles, profiles.proToken);
+        // User lama dapat trial 7 hari mulai dari update ini.
+        await customStatement(
+          "UPDATE profiles SET trial_started_at = CAST(strftime('%s', 'now') AS INTEGER)",
+        );
       }
     },
     beforeOpen: (details) async {

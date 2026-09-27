@@ -70,6 +70,14 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   void _toast(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
+  /// Catat otomatis = fitur Pro: trial habis & belum beli → layar 53.
+  Future<bool> _proUnlocked() async {
+    final status = await ref.read(proRepositoryProvider).status();
+    if (status.unlocked) return true;
+    if (mounted) await context.push('/pro');
+    return false;
+  }
+
   /// Sumber catat otomatis: selalu jelaskan dulu (sheet ⓘ), baru minta izin.
   Future<void> _enableSources(
     List<PrivacyItem> items,
@@ -82,33 +90,38 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     if (!status.listenerAccess) await _bridge.openAccessSettings();
   }
 
-  Future<void> _toggle(PrivacyItem item, bool on, AutoStatus status) => _run(
-    () async {
-      switch (item) {
-        case PrivacyItem.camera:
-          if (on) {
-            if (!await _bridge.requestCamera() && mounted) {
-              _toast('Izin kamera ditolak. Nyalakan dari pengaturan aplikasi.');
-            }
-          } else {
-            // Izin Android cuma bisa dicabut dari pengaturan aplikasi.
-            if (mounted) _toast('Matikan izin Kamera di pengaturan aplikasi.');
-            await _bridge.openAppSettings();
+  Future<void> _toggle(
+    PrivacyItem item,
+    bool on,
+    AutoStatus status,
+  ) => _run(() async {
+    switch (item) {
+      case PrivacyItem.camera:
+        if (on) {
+          if (!await _bridge.requestCamera() && mounted) {
+            _toast('Izin kamera ditolak. Nyalakan dari pengaturan aplikasi.');
           }
-        case PrivacyItem.notifications:
-          if (on) await _bridge.requestNotifications();
-          await _bridge.setReminder(on);
-        default:
-          if (!on) {
-            await _bridge.setSource(item.source!, false);
-          } else if (await showPrivacyInfo(context, item, on: false)) {
-            await _enableSources([item], status);
-          }
-      }
-    },
-  );
+        } else {
+          // Izin Android cuma bisa dicabut dari pengaturan aplikasi.
+          if (mounted) _toast('Matikan izin Kamera di pengaturan aplikasi.');
+          await _bridge.openAppSettings();
+        }
+      case PrivacyItem.notifications:
+        if (on) await _bridge.requestNotifications();
+        await _bridge.setReminder(on);
+      default:
+        if (!on) {
+          await _bridge.setSource(item.source!, false);
+        } else if (!await _proUnlocked()) {
+          return;
+        } else if (mounted && await showPrivacyInfo(context, item, on: false)) {
+          await _enableSources([item], status);
+        }
+    }
+  });
 
   Future<void> _enableRecommended(AutoStatus status) => _run(() async {
+    if (!await _proUnlocked() || !mounted) return;
     if (!await showPrivacyInfo(context, PrivacyItem.financeApp, on: false)) {
       return;
     }

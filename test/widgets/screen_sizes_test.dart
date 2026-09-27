@@ -110,6 +110,10 @@ void main() {
     ('/gajian-masuk', null),
     ('/privasi-awal?next=/beranda', null),
     ('/privasi', null),
+    ('/pro', null),
+    ('/pro-kebuka', null),
+    ('/masuk-email', null),
+    ('/masuk-kode?email=frans@email.com', null),
     ('/sesuaikan-saldo', null),
     ('/baca-struk', '/tmp/struk.jpg'),
     (

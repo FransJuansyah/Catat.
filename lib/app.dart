@@ -13,8 +13,11 @@ import 'data/auto_capture.dart';
 import 'data/providers.dart';
 import 'data/receipt_scanner.dart';
 import 'domain/types.dart';
+import 'domain/pro.dart';
 import 'features/account/account_screen.dart';
 import 'features/account/sign_in_screens.dart';
+import 'features/pro/pro_screen.dart';
+import 'features/pro/pro_unlocked_screen.dart';
 import 'features/balance/adjust_balance_screen.dart';
 import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
@@ -142,7 +145,14 @@ GoRouter createRouter({
         ),
       ],
     ),
-    GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
+    // Fitur Pro: trial habis & belum beli → layar 53 (lihat ProGate).
+    GoRoute(
+      path: '/scan',
+      builder: (_, _) =>
+          const ProGate(feature: ProFeature.scan, child: ScanScreen()),
+    ),
+    GoRoute(path: '/pro', builder: (_, _) => const ProScreen()),
+    GoRoute(path: '/pro-kebuka', builder: (_, _) => const ProUnlockedScreen()),
     GoRoute(
       path: '/export',
       builder: (_, state) {
@@ -151,7 +161,10 @@ GoRouter createRouter({
         final parsed = DateTime.tryParse(
           '${state.uri.queryParameters['bulan'] ?? ''}-01',
         );
-        return ExportScreen(month: parsed ?? DateTime(now.year, now.month));
+        return ProGate(
+          feature: ProFeature.export,
+          child: ExportScreen(month: parsed ?? DateTime(now.year, now.month)),
+        );
       },
     ),
     GoRoute(
@@ -166,8 +179,10 @@ GoRouter createRouter({
     ),
     GoRoute(
       path: '/baca-struk',
-      builder: (_, state) =>
-          ScanReadingScreen(imagePath: state.extra! as String),
+      builder: (_, state) => ProGate(
+        feature: ProFeature.scan,
+        child: ScanReadingScreen(imagePath: state.extra! as String),
+      ),
     ),
     GoRoute(
       path: '/hasil-scan',
@@ -288,6 +303,9 @@ class _CatatAppState extends ConsumerState<CatatApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _applyOrientation();
+    // Dengarkan Google Play sejak awal: pembelian yang selesai saat app
+    // tertutup (mis. bayar via DANA belakangan) tetap tercatat.
+    ref.listenManual(proProvider, (_, _) {});
     final bridge = ref.read(autoCaptureProvider);
     // Aplikasi sudah terbuka lalu notif catat. / share diketuk.
     _launches = bridge.launches.listen((_) {

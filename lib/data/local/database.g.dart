@@ -586,6 +586,41 @@ class $ProfilesTable extends Profiles with TableInfo<$ProfilesTable, Profile> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _trialStartedAtMeta = const VerificationMeta(
+    'trialStartedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> trialStartedAt =
+      GeneratedColumn<DateTime>(
+        'trial_started_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _proPurchasedAtMeta = const VerificationMeta(
+    'proPurchasedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> proPurchasedAt =
+      GeneratedColumn<DateTime>(
+        'pro_purchased_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _proTokenMeta = const VerificationMeta(
+    'proToken',
+  );
+  @override
+  late final GeneratedColumn<String> proToken = GeneratedColumn<String>(
+    'pro_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -593,6 +628,9 @@ class $ProfilesTable extends Profiles with TableInfo<$ProfilesTable, Profile> {
     updatedAt,
     deletedAt,
     name,
+    trialStartedAt,
+    proPurchasedAt,
+    proToken,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -637,6 +675,30 @@ class $ProfilesTable extends Profiles with TableInfo<$ProfilesTable, Profile> {
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('trial_started_at')) {
+      context.handle(
+        _trialStartedAtMeta,
+        trialStartedAt.isAcceptableOrUnknown(
+          data['trial_started_at']!,
+          _trialStartedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pro_purchased_at')) {
+      context.handle(
+        _proPurchasedAtMeta,
+        proPurchasedAt.isAcceptableOrUnknown(
+          data['pro_purchased_at']!,
+          _proPurchasedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pro_token')) {
+      context.handle(
+        _proTokenMeta,
+        proToken.isAcceptableOrUnknown(data['pro_token']!, _proTokenMeta),
+      );
+    }
     return context;
   }
 
@@ -666,6 +728,18 @@ class $ProfilesTable extends Profiles with TableInfo<$ProfilesTable, Profile> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      trialStartedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}trial_started_at'],
+      ),
+      proPurchasedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}pro_purchased_at'],
+      ),
+      proToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pro_token'],
+      ),
     );
   }
 
@@ -681,12 +755,23 @@ class Profile extends DataClass implements Insertable<Profile> {
   final DateTime updatedAt;
   final DateTime? deletedAt;
   final String name;
+
+  /// catat. Pro: mulai trial 7 hari (selesai daftar / update ke versi
+  /// berbayar). Ikut sinkron → tidak ter-reset dengan install ulang + masuk.
+  final DateTime? trialStartedAt;
+
+  /// Sudah beli Pro (sekali bayar) & token pembelian Google Play.
+  final DateTime? proPurchasedAt;
+  final String? proToken;
   const Profile({
     required this.id,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
     required this.name,
+    this.trialStartedAt,
+    this.proPurchasedAt,
+    this.proToken,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -698,6 +783,15 @@ class Profile extends DataClass implements Insertable<Profile> {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || trialStartedAt != null) {
+      map['trial_started_at'] = Variable<DateTime>(trialStartedAt);
+    }
+    if (!nullToAbsent || proPurchasedAt != null) {
+      map['pro_purchased_at'] = Variable<DateTime>(proPurchasedAt);
+    }
+    if (!nullToAbsent || proToken != null) {
+      map['pro_token'] = Variable<String>(proToken);
+    }
     return map;
   }
 
@@ -710,6 +804,15 @@ class Profile extends DataClass implements Insertable<Profile> {
           ? const Value.absent()
           : Value(deletedAt),
       name: Value(name),
+      trialStartedAt: trialStartedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trialStartedAt),
+      proPurchasedAt: proPurchasedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(proPurchasedAt),
+      proToken: proToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(proToken),
     );
   }
 
@@ -724,6 +827,9 @@ class Profile extends DataClass implements Insertable<Profile> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       name: serializer.fromJson<String>(json['name']),
+      trialStartedAt: serializer.fromJson<DateTime?>(json['trialStartedAt']),
+      proPurchasedAt: serializer.fromJson<DateTime?>(json['proPurchasedAt']),
+      proToken: serializer.fromJson<String?>(json['proToken']),
     );
   }
   @override
@@ -735,6 +841,9 @@ class Profile extends DataClass implements Insertable<Profile> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'name': serializer.toJson<String>(name),
+      'trialStartedAt': serializer.toJson<DateTime?>(trialStartedAt),
+      'proPurchasedAt': serializer.toJson<DateTime?>(proPurchasedAt),
+      'proToken': serializer.toJson<String?>(proToken),
     };
   }
 
@@ -744,12 +853,22 @@ class Profile extends DataClass implements Insertable<Profile> {
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
     String? name,
+    Value<DateTime?> trialStartedAt = const Value.absent(),
+    Value<DateTime?> proPurchasedAt = const Value.absent(),
+    Value<String?> proToken = const Value.absent(),
   }) => Profile(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     name: name ?? this.name,
+    trialStartedAt: trialStartedAt.present
+        ? trialStartedAt.value
+        : this.trialStartedAt,
+    proPurchasedAt: proPurchasedAt.present
+        ? proPurchasedAt.value
+        : this.proPurchasedAt,
+    proToken: proToken.present ? proToken.value : this.proToken,
   );
   Profile copyWithCompanion(ProfilesCompanion data) {
     return Profile(
@@ -758,6 +877,13 @@ class Profile extends DataClass implements Insertable<Profile> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       name: data.name.present ? data.name.value : this.name,
+      trialStartedAt: data.trialStartedAt.present
+          ? data.trialStartedAt.value
+          : this.trialStartedAt,
+      proPurchasedAt: data.proPurchasedAt.present
+          ? data.proPurchasedAt.value
+          : this.proPurchasedAt,
+      proToken: data.proToken.present ? data.proToken.value : this.proToken,
     );
   }
 
@@ -768,13 +894,25 @@ class Profile extends DataClass implements Insertable<Profile> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('trialStartedAt: $trialStartedAt, ')
+          ..write('proPurchasedAt: $proPurchasedAt, ')
+          ..write('proToken: $proToken')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, createdAt, updatedAt, deletedAt, name);
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    trialStartedAt,
+    proPurchasedAt,
+    proToken,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -783,7 +921,10 @@ class Profile extends DataClass implements Insertable<Profile> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
-          other.name == this.name);
+          other.name == this.name &&
+          other.trialStartedAt == this.trialStartedAt &&
+          other.proPurchasedAt == this.proPurchasedAt &&
+          other.proToken == this.proToken);
 }
 
 class ProfilesCompanion extends UpdateCompanion<Profile> {
@@ -792,6 +933,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<String> name;
+  final Value<DateTime?> trialStartedAt;
+  final Value<DateTime?> proPurchasedAt;
+  final Value<String?> proToken;
   final Value<int> rowid;
   const ProfilesCompanion({
     this.id = const Value.absent(),
@@ -799,6 +943,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.name = const Value.absent(),
+    this.trialStartedAt = const Value.absent(),
+    this.proPurchasedAt = const Value.absent(),
+    this.proToken = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProfilesCompanion.insert({
@@ -807,6 +954,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     required String name,
+    this.trialStartedAt = const Value.absent(),
+    this.proPurchasedAt = const Value.absent(),
+    this.proToken = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name);
@@ -816,6 +966,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<String>? name,
+    Expression<DateTime>? trialStartedAt,
+    Expression<DateTime>? proPurchasedAt,
+    Expression<String>? proToken,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -824,6 +977,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (name != null) 'name': name,
+      if (trialStartedAt != null) 'trial_started_at': trialStartedAt,
+      if (proPurchasedAt != null) 'pro_purchased_at': proPurchasedAt,
+      if (proToken != null) 'pro_token': proToken,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -834,6 +990,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
     Value<String>? name,
+    Value<DateTime?>? trialStartedAt,
+    Value<DateTime?>? proPurchasedAt,
+    Value<String?>? proToken,
     Value<int>? rowid,
   }) {
     return ProfilesCompanion(
@@ -842,6 +1001,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       name: name ?? this.name,
+      trialStartedAt: trialStartedAt ?? this.trialStartedAt,
+      proPurchasedAt: proPurchasedAt ?? this.proPurchasedAt,
+      proToken: proToken ?? this.proToken,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -864,6 +1026,15 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (trialStartedAt.present) {
+      map['trial_started_at'] = Variable<DateTime>(trialStartedAt.value);
+    }
+    if (proPurchasedAt.present) {
+      map['pro_purchased_at'] = Variable<DateTime>(proPurchasedAt.value);
+    }
+    if (proToken.present) {
+      map['pro_token'] = Variable<String>(proToken.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -878,6 +1049,9 @@ class ProfilesCompanion extends UpdateCompanion<Profile> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('name: $name, ')
+          ..write('trialStartedAt: $trialStartedAt, ')
+          ..write('proPurchasedAt: $proPurchasedAt, ')
+          ..write('proToken: $proToken, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6871,6 +7045,9 @@ typedef $$ProfilesTableCreateCompanionBuilder = ProfilesCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   required String name,
+  Value<DateTime?> trialStartedAt,
+  Value<DateTime?> proPurchasedAt,
+  Value<String?> proToken,
   Value<int> rowid,
 });
 typedef $$ProfilesTableUpdateCompanionBuilder = ProfilesCompanion Function({
@@ -6879,6 +7056,9 @@ typedef $$ProfilesTableUpdateCompanionBuilder = ProfilesCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<String> name,
+  Value<DateTime?> trialStartedAt,
+  Value<DateTime?> proPurchasedAt,
+  Value<String?> proToken,
   Value<int> rowid,
 });
 
@@ -6913,6 +7093,21 @@ class $$ProfilesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get trialStartedAt => $composableBuilder(
+    column: $table.trialStartedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get proPurchasedAt => $composableBuilder(
+    column: $table.proPurchasedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get proToken => $composableBuilder(
+    column: $table.proToken,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6950,6 +7145,21 @@ class $$ProfilesTableOrderingComposer
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get trialStartedAt => $composableBuilder(
+    column: $table.trialStartedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get proPurchasedAt => $composableBuilder(
+    column: $table.proPurchasedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get proToken => $composableBuilder(
+    column: $table.proToken,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProfilesTableAnnotationComposer
@@ -6975,6 +7185,19 @@ class $$ProfilesTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get trialStartedAt => $composableBuilder(
+    column: $table.trialStartedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get proPurchasedAt => $composableBuilder(
+    column: $table.proPurchasedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get proToken =>
+      $composableBuilder(column: $table.proToken, builder: (column) => column);
 }
 
 class $$ProfilesTableTableManager
@@ -7010,6 +7233,9 @@ class $$ProfilesTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<DateTime?> trialStartedAt = const Value.absent(),
+                Value<DateTime?> proPurchasedAt = const Value.absent(),
+                Value<String?> proToken = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProfilesCompanion(
                 id: id,
@@ -7017,6 +7243,9 @@ class $$ProfilesTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 name: name,
+                trialStartedAt: trialStartedAt,
+                proPurchasedAt: proPurchasedAt,
+                proToken: proToken,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7026,6 +7255,9 @@ class $$ProfilesTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 required String name,
+                Value<DateTime?> trialStartedAt = const Value.absent(),
+                Value<DateTime?> proPurchasedAt = const Value.absent(),
+                Value<String?> proToken = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProfilesCompanion.insert(
                 id: id,
@@ -7033,6 +7265,9 @@ class $$ProfilesTableTableManager
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
                 name: name,
+                trialStartedAt: trialStartedAt,
+                proPurchasedAt: proPurchasedAt,
+                proToken: proToken,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

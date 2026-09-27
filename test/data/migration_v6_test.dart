@@ -12,7 +12,7 @@ import 'sync_engine_test.dart' show FakeRemote;
 /// HP yang sudah dipakai (schema v5) update ke app F8 (v6): data utuh,
 /// trigger antrian sinkron langsung jalan.
 void main() {
-  test('migrasi v5 → v6', () async {
+  test('migrasi v5 → v7', () async {
     final dir = await Directory.systemTemp.createTemp('catat_mig');
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/catat.sqlite');
@@ -34,6 +34,9 @@ void main() {
         await db.customStatement('DROP TRIGGER sync_${t}_$op');
       }
     }
+    for (final c in ['trial_started_at', 'pro_purchased_at', 'pro_token']) {
+      await db.customStatement('ALTER TABLE profiles DROP COLUMN $c');
+    }
     await db.customStatement('DROP TABLE sync_outbox');
     await db.customStatement('DROP TABLE sync_meta');
     await db.customStatement('PRAGMA user_version = 5');
@@ -45,7 +48,11 @@ void main() {
     repo = BudgetRepository(db, () => now);
     expect((await repo.loadHome()).remaining, before);
     final sync = SyncEngine(db, FakeRemote());
-    expect(await sync.pendingCount(), 0);
+    // User lama dapat trial 7 hari dari update (v7).
+    final profile = await db.select(db.profiles).getSingle();
+    expect(profile.trialStartedAt, isNotNull);
+    expect(profile.proPurchasedAt, isNull);
+    await db.delete(db.syncOutbox).go();
     await repo.addExpense(pocketId: k.id, amount: 5000, title: 'Parkir');
     expect(await sync.pendingCount(), greaterThan(0));
     await sync.enqueueAll();
