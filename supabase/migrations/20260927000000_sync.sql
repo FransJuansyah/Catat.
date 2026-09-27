@@ -22,6 +22,11 @@ create index if not exists sync_rows_user_rev on public.sync_rows (user_id, rev)
 
 alter table public.sync_rows enable row level security;
 
+-- Izin eksplisit (project baru tidak selalu memberi otomatis). Tetap dibatasi
+-- RLS: user hanya melihat & menulis barisnya sendiri.
+grant usage on sequence public.sync_rev to authenticated;
+grant select, insert, update on public.sync_rows to authenticated;
+
 drop policy if exists "baris sendiri" on public.sync_rows;
 create policy "baris sendiri" on public.sync_rows
   for all to authenticated
