@@ -13,6 +13,7 @@ import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
 import 'account.dart';
+import 'app_lock.dart';
 import 'auto_capture.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
@@ -543,6 +544,11 @@ class AccountController extends Notifier<AccountState> {
   Future<void> sendCode(String email) => _service.sendCode(email);
 
   /// Kode benar → tentukan nasib data HP ini (lihat [LoginStart]).
+  /// Lupa PIN (layar 58): buktikan pemilik akun lewat kode email, tanpa
+  /// menyentuh data.
+  Future<void> reverify(String code) =>
+      _service.verifyCode(state.email ?? '', code);
+
   Future<LoginStart> verifyCode(String email, String code) async {
     await _service.verifyCode(email, code);
     return decideStart();
@@ -762,3 +768,45 @@ class ProController extends Notifier<ProUiState> {
 final proProvider = NotifierProvider<ProController, ProUiState>(
   ProController.new,
 );
+
+// ------------------------------------------------------------ kunci app
+
+bool get _onAndroid =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// Pengaturan PIN (Keystore). Di-override di test.
+final lockStoreProvider = Provider<LockStore>(
+  (ref) => _onAndroid ? SecureLockStore() : MemoryLockStore(),
+);
+
+/// Sidik jari. Di-override di test.
+final biometricProvider = Provider<BiometricAuth>(
+  (ref) => _onAndroid ? DeviceBiometricAuth() : const _NoBiometric(),
+);
+
+class _NoBiometric implements BiometricAuth {
+  const _NoBiometric();
+
+  @override
+  Future<bool> available() async => false;
+
+  @override
+  Future<bool> authenticate() async => false;
+}
+
+final appLockProvider = Provider<AppLock>((ref) {
+  final lock = AppLock(
+    ref.watch(lockStoreProvider),
+    ref.watch(biometricProvider),
+    ref.watch(clockProvider),
+  );
+  unawaited(lock.load());
+  ref.onDispose(lock.dispose);
+  return lock;
+});
+
+final lockStateProvider = StreamProvider<AppLockState>((ref) async* {
+  final lock = ref.watch(appLockProvider);
+  yield lock.state;
+  yield* lock.changes;
+});

@@ -111,6 +111,8 @@ void main() {
     ('/privasi-awal?next=/beranda', null),
     ('/privasi', null),
     ('/pro', null),
+    ('/keamanan', null),
+    ('/pin?mode=create', null),
     ('/pro-kebuka', null),
     ('/masuk-email', null),
     ('/masuk-kode?email=frans@email.com', null),

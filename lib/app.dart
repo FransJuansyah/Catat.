@@ -17,6 +17,9 @@ import 'domain/pro.dart';
 import 'features/account/account_screen.dart';
 import 'features/account/sign_in_screens.dart';
 import 'features/pro/pro_screen.dart';
+import 'features/security/lock_screen.dart';
+import 'features/security/pin_screen.dart';
+import 'features/security/security_screen.dart';
 import 'features/pro/pro_unlocked_screen.dart';
 import 'features/balance/adjust_balance_screen.dart';
 import 'features/expense/expense_detail_screen.dart';
@@ -152,6 +155,16 @@ GoRouter createRouter({
           const ProGate(feature: ProFeature.scan, child: ScanScreen()),
     ),
     GoRoute(path: '/pro', builder: (_, _) => const ProScreen()),
+    GoRoute(path: '/keamanan', builder: (_, _) => const SecurityScreen()),
+    GoRoute(
+      path: '/pin',
+      builder: (_, state) => PinScreen(
+        mode: PinMode.values.firstWhere(
+          (m) => m.name == state.uri.queryParameters['mode'],
+          orElse: () => PinMode.create,
+        ),
+      ),
+    ),
     GoRoute(path: '/pro-kebuka', builder: (_, _) => const ProUnlockedScreen()),
     GoRoute(
       path: '/export',
@@ -370,5 +383,9 @@ Widget appBuilder(BuildContext context, Widget? child) =>
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
       ),
-      child: AppFrame(child: child!),
+      // Kunci PIN (layar 58) menutupi semua layar di atas router.
+      child: LockGate(
+        onPinReset: () => unawaited(_router.push('/pin?mode=create')),
+        child: AppFrame(child: child!),
+      ),
     );

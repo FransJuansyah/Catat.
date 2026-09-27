@@ -10,6 +10,7 @@ import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/account.dart';
+import '../../data/app_lock.dart';
 import '../../data/auto_capture.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
@@ -58,6 +59,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final status = ref.watch(autoStatusProvider).value ?? const AutoStatus();
     final account = ref.watch(accountProvider);
     final pro = ref.watch(proStatusProvider).value;
+    final lock = ref.watch(lockStateProvider).value ?? const AppLockState();
 
     return SafeArea(
       bottom: false,
@@ -136,6 +138,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     : 'Catat otomatis, kamera, notifikasi',
                 subtitleColor: status.needsAccess ? AppColors.danger : null,
                 onTap: () => context.push('/privasi'),
+              ),
+              _Row(
+                icon: LucideIcons.lock,
+                title: 'Keamanan',
+                subtitle: switch (lock) {
+                  AppLockState(enabled: false) => 'PIN & sidik jari',
+                  AppLockState(biometric: true) => 'PIN · sidik jari aktif',
+                  _ => 'PIN aktif',
+                },
+                onTap: () => context.push('/keamanan'),
               ),
             ],
           ),

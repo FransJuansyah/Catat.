@@ -76,3 +76,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Tema AppCompat untuk dialog sidik jari (local_auth) di Android lama.
+    implementation("androidx.appcompat:appcompat:1.7.1")
+}
