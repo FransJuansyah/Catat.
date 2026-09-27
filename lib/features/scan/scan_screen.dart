@@ -240,13 +240,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
                   ],
                 ),
                 const SizedBox(height: 20),
-                Expanded(child: _viewfinder()),
+                // Cadangan kalau struk tidak kebaca otomatis: ketuk kotak.
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _camera == null || _busy ? null : _capture,
+                    child: _viewfinder(),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 HintPill(
                   text: _busy
                       ? 'Kebaca! Tahan bentar…'
                       : _slow
-                      ? 'Dekatin & cari tempat terang'
+                      ? 'Belum kebaca? Ketuk kotaknya buat foto'
                       : 'Arahin ke struk, nanti kefoto sendiri',
                   highlight: _busy,
                 ),

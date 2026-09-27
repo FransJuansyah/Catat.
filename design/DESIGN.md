@@ -122,7 +122,7 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 | 01 | Masuk / Daftar | Headline "Gajian aman, catat tanpa ribet.", ilustrasi *Gajian masuk → 3 kantong*, tombol Google + Email | → 02 |
 | 02 | Atur Gaji | Gaji bersih, upload slip (dashed), tanggal gajian, toggle "Tambah otomatis", bar pembagian 3 kantong | Upload → 08 · Ubah → 20 · Simpan → 19 |
 | 03 | Beranda | Header avatar, hero "Sisa duitmu", banner Scan, 3 kartu kantong, bottom nav | Scan → 04 · kartu Wajib → 12 · kartu Keinginan → 24 · Atur → 20 · lonceng → 18 |
-| 04 | Scan Struk | Bg ink, viewfinder + bracket lime + garis scan, hint "Arahin ke struk, nanti kefoto sendiri", Galeri / Manual. **Tanpa tombol shutter**: kamera baca teks terus-menerus, begitu TOTAL kebaca stabil → 46 → foto otomatis. Lama belum kebaca → hint "Dekatin & cari tempat terang" | Struk kebaca → 46 · Galeri → 09 · Manual → 11 |
+| 04 | Scan Struk | Bg ink, viewfinder + bracket lime + garis scan, hint "Arahin ke struk, nanti kefoto sendiri", Galeri / Manual. **Tanpa tombol shutter**: kamera baca teks terus-menerus, begitu TOTAL kebaca stabil → 46 → foto otomatis. 8 detik belum kebaca → hint "Belum kebaca? Ketuk kotaknya buat foto" (ketuk area kamera = foto) | Struk kebaca → 46 · Galeri → 09 · Manual → 11 |
 | 05 | Hasil Scan | Banner sukses, kartu struk (merchant, item, total), pilih kantong (tebakan AI), Simpan | Simpan → 10 · Scan ulang → 04 |
 | 06 | Catatan Harian | Kalender bulan (titik warna kantong per hari, tgl gajian lime), daftar pengeluaran tanggal terpilih | item → 13 · tgl kosong → 26 |
 | 07 | Export Laporan | Periode (Bulanan / 3 Bulan / Setahun), format (PDF / Excel), Download | → 15 |
