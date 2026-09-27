@@ -22,6 +22,10 @@ String signInError(Object e, {bool code = false}) {
   if (lower.contains('429') || lower.contains('rate')) {
     return 'Kebanyakan minta kode. Tunggu sebentar, lalu coba lagi.';
   }
+  // Server email (SMTP / template) bermasalah — bukan salah user.
+  if (lower.contains('500') || lower.contains('sending')) {
+    return 'Email belum bisa dikirim dari server. Coba lagi sebentar lagi.';
+  }
   if (code && (lower.contains('expired') || lower.contains('invalid'))) {
     return 'Kodenya salah atau udah kedaluwarsa.';
   }
