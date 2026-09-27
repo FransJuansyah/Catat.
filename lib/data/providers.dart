@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -8,6 +11,7 @@ import '../domain/pocket_config.dart';
 import '../domain/templates.dart';
 import '../domain/types.dart';
 import '../domain/views.dart';
+import 'account.dart';
 import 'auto_capture.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
@@ -15,6 +19,7 @@ import 'payslip_reader.dart';
 import 'receipt_scanner.dart';
 import 'repositories/budget_repository.dart';
 import 'repositories/report_repository.dart';
+import 'sync/sync_engine.dart';
 
 /// Jam sistem. Di-override di test agar tanggal bisa dikontrol.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -429,4 +434,181 @@ class AppReadyController extends Notifier<bool> {
 
 final appReadyProvider = NotifierProvider<AppReadyController, bool>(
   AppReadyController.new,
+);
+
+// ------------------------------------------------------- akun & sinkron (F8)
+
+/// Login email + server sinkron. Di-override di test.
+final accountServiceProvider = Provider<AccountService>(
+  (ref) => SupabaseAccountService(),
+);
+
+final syncEngineProvider = Provider<SyncEngine>(
+  (ref) => SyncEngine(
+    ref.watch(databaseProvider),
+    ref.watch(accountServiceProvider).remote,
+  ),
+);
+
+/// Setelah kode benar: data HP & data akun digabung bagaimana.
+enum LoginStart {
+  /// Akun masih kosong → data di HP ini (kalau ada) diunggah.
+  upload,
+
+  /// Akun sudah ada isinya, HP kosong → tarik data akun.
+  restore,
+
+  /// Dua-duanya ada isinya → tanya dulu (data HP diganti data akun).
+  conflict,
+}
+
+class AccountState {
+  const AccountState({
+    this.email,
+    this.syncing = false,
+    this.lastSync,
+    this.failed = false,
+  });
+
+  /// null = belum masuk.
+  final String? email;
+  final bool syncing;
+  final DateTime? lastSync;
+
+  /// Sinkron terakhir gagal (biasanya offline); dicoba lagi otomatis.
+  final bool failed;
+
+  bool get signedIn => email != null;
+
+  AccountState copyWith({
+    String? email,
+    bool clearEmail = false,
+    bool? syncing,
+    DateTime? lastSync,
+    bool? failed,
+  }) => AccountState(
+    email: clearEmail ? null : email ?? this.email,
+    syncing: syncing ?? this.syncing,
+    lastSync: lastSync ?? this.lastSync,
+    failed: failed ?? this.failed,
+  );
+}
+
+/// Masih ada perubahan yang belum terkirim & gagal dikirim (offline).
+class PendingChangesException implements Exception {
+  const PendingChangesException(this.count);
+
+  final int count;
+}
+
+class AccountController extends Notifier<AccountState> {
+  AccountService get _service => ref.read(accountServiceProvider);
+  SyncEngine get _engine => ref.read(syncEngineProvider);
+
+  Timer? _debounce;
+
+  @override
+  AccountState build() {
+    final service = ref.watch(accountServiceProvider);
+    if (!service.available) return const AccountState();
+    final auth = service.emailChanges.listen((email) {
+      if (email != state.email) state = state.copyWith(email: email);
+    });
+    // Tiap ada perubahan lokal → kirim sebentar lagi (dikumpulkan dulu).
+    final pending = ref.read(syncEngineProvider).watchPending().listen((n) {
+      if (n == 0 || !state.signedIn) return;
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(seconds: 3), syncNow);
+    });
+    final lifecycle = AppLifecycleListener(onResume: syncNow);
+    ref.onDispose(() {
+      auth.cancel();
+      pending.cancel();
+      lifecycle.dispose();
+      _debounce?.cancel();
+    });
+    unawaited(_loadLastSync());
+    final email = service.email;
+    if (email != null) Future.microtask(syncNow);
+    return AccountState(email: email);
+  }
+
+  Future<void> _loadLastSync() async {
+    final last = await ref.read(syncEngineProvider).lastSyncAt();
+    if (last != null) state = state.copyWith(lastSync: last);
+  }
+
+  Future<void> sendCode(String email) => _service.sendCode(email);
+
+  /// Kode benar → tentukan nasib data HP ini (lihat [LoginStart]).
+  Future<LoginStart> verifyCode(String email, String code) async {
+    await _service.verifyCode(email, code);
+    final remoteHasData = await _service.remote.hasData();
+    final localHasData = await ref.read(budgetRepositoryProvider).isSetUp();
+    if (!remoteHasData) return LoginStart.upload;
+    return localHasData ? LoginStart.conflict : LoginStart.restore;
+  }
+
+  /// Lanjutkan login setelah [verifyCode].
+  Future<void> finishLogin(LoginStart start) async {
+    if (start == LoginStart.upload) {
+      await _engine.enqueueAll();
+    } else {
+      await _engine.wipeLocal();
+    }
+    state = state.copyWith(email: _service.email);
+    await syncNow(rethrowErrors: true);
+    ref.invalidate(isSetUpProvider);
+  }
+
+  /// Batal di tengah login (mis. tidak jadi mengganti data HP).
+  Future<void> cancelLogin() async {
+    await _service.signOut();
+    state = state.copyWith(clearEmail: true);
+  }
+
+  Future<void> syncNow({bool rethrowErrors = false}) async {
+    if (!state.signedIn || state.syncing) return;
+    state = state.copyWith(syncing: true);
+    try {
+      await _engine.sync();
+      state = state.copyWith(
+        syncing: false,
+        failed: false,
+        lastSync: await _engine.lastSyncAt(),
+      );
+    } on Object {
+      state = state.copyWith(syncing: false, failed: true);
+      if (rethrowErrors) rethrow;
+    }
+  }
+
+  /// Keluar (layar 51): kirim sisa perubahan, lalu kosongkan HP ini.
+  /// [force] = tetap keluar walau ada perubahan yang belum terkirim.
+  Future<void> signOut({bool force = false}) async {
+    if (!force) {
+      try {
+        await _engine.push();
+      } on Object {
+        // Offline: dicek di bawah.
+      }
+      final left = await _engine.pendingCount();
+      if (left > 0) throw PendingChangesException(left);
+    }
+    await _service.signOut();
+    await _engine.wipeLocal();
+    state = const AccountState();
+    ref.invalidate(isSetUpProvider);
+  }
+
+  /// Hapus akun & data (layar 52).
+  Future<void> deleteAccount() async {
+    await _engine.deleteAccount();
+    state = const AccountState();
+    ref.invalidate(isSetUpProvider);
+  }
+}
+
+final accountProvider = NotifierProvider<AccountController, AccountState>(
+  AccountController.new,
 );

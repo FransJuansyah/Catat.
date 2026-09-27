@@ -158,8 +158,50 @@ class IncomeAllocations extends Table with SyncedRow {
   ];
 }
 
+/// Antrian perubahan lokal yang belum dikirim ke akun (F8). Diisi otomatis
+/// oleh trigger SQLite di tiap tabel data, jadi tidak ada perubahan yang lolos.
+class SyncOutbox extends Table {
+  TextColumn get tableName_ => text().named('table_name')();
+  TextColumn get rowId => text()();
+
+  /// Urutan perubahan; baris yang berubah lagi saat dikirim tidak ikut dihapus.
+  IntColumn get seq => integer()();
+
+  /// Waktu perubahan (detik unix): penentu "yang terakhir menang" di akun.
+  IntColumn get changedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {tableName_, rowId};
+}
+
+/// Status sinkron (kunci-nilai): waktu tarik terakhir, penanda sedang
+/// menerapkan data dari akun (trigger outbox dimatikan), dll.
+class SyncMeta extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+/// Tabel data yang ikut sinkron, urut induk → anak.
+const syncedTables = [
+  'profiles',
+  'salary_settings',
+  'pockets',
+  'periods',
+  'period_allocations',
+  'incomes',
+  'income_allocations',
+  'expenses',
+  'expense_items',
+  'transfers',
+];
+
 @DriftDatabase(
   tables: [
+    SyncOutbox,
+    SyncMeta,
     Profiles,
     SalarySettings,
     Pockets,
@@ -178,10 +220,14 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await _createSyncTriggers();
+    },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.addColumn(periods, periods.celebrated);
@@ -204,9 +250,37 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await m.addColumn(periods, periods.opening);
       }
+      if (from < 6) {
+        await m.createTable(syncOutbox);
+        await m.createTable(syncMeta);
+        await _createSyncTriggers();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Tiap insert/update/delete di tabel data → masuk [SyncOutbox], kecuali
+  /// saat menerapkan data dari akun (sync_meta.applying = 1).
+  Future<void> _createSyncTriggers() async {
+    for (final t in syncedTables) {
+      for (final (op, row) in [
+        ('INSERT', 'NEW'),
+        ('UPDATE', 'NEW'),
+        ('DELETE', 'OLD'),
+      ]) {
+        await customStatement('''
+CREATE TRIGGER IF NOT EXISTS sync_${t}_${op.toLowerCase()} AFTER $op ON $t
+WHEN NOT EXISTS (SELECT 1 FROM sync_meta WHERE key = 'applying' AND value = '1')
+BEGIN
+  INSERT INTO sync_outbox (table_name, row_id, seq, changed_at)
+  VALUES ('$t', $row.id, (SELECT COALESCE(MAX(seq), 0) + 1 FROM sync_outbox),
+    CAST(strftime('%s', 'now') AS INTEGER))
+  ON CONFLICT (table_name, row_id)
+  DO UPDATE SET seq = excluded.seq, changed_at = excluded.changed_at;
+END''');
+      }
+    }
+  }
 }

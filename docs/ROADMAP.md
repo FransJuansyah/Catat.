@@ -12,7 +12,7 @@ Prinsip biaya: **semua komponen memakai paket gratis.** Satu-satunya biaya wajib
 | App | **Flutter** (Android dulu, iOS menyusul) | Sudah berjalan, UI sesuai desain |
 | Data di HP | **Local-first: SQLite via `drift`** sebagai sumber data utama di perangkat | Nyatat harus instan & jalan tanpa sinyal (di kasir, di jalan). Menambah offline belakangan jauh lebih mahal |
 | Backend | **Supabase** (Auth, Postgres, Storage) | Paket gratis, SQL beneran, Row Level Security, gampang di-scale |
-| Sinkronisasi | Antrian perubahan lokal (outbox) → push ke Supabase saat online; pull perubahan berdasar `updated_at` | Multi-HP & backup tanpa kehilangan data |
+| Sinkronisasi | Trigger SQLite mengisi `sync_outbox` di tiap insert/update/delete → push ke Supabase (`push_rows`, yang terakhir menang per baris) → pull berdasar nomor urut server (`rev`). Server menyimpan tiap baris sebagai dokumen JSON (`sync_rows`), jadi skema lokal berubah tanpa migrasi SQL. Id periode/jatah dibuat tetap (uuid v5) supaya dua HP offline tidak dobel | Multi-HP & backup tanpa kehilangan data |
 | Login | Google Sign-In + Email (Supabase Auth) | Sesuai desain layar 01 |
 | State | **Riverpod** | Terstruktur, mudah dites |
 | OCR struk & slip | **Google ML Kit Text Recognition** (on-device) + parser aturan untuk struk Indonesia | Gratis, cepat, privasi (foto tidak wajib keluar HP) |
@@ -79,7 +79,7 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 | **F6 Slip gaji** ✅ (uji akurasi di slip asli berlanjut) | Upload foto/PDF slip → baca nominal gaji bersih | 02, 08 | Nominal terisi otomatis, bisa dikoreksi |
 | **F6.5 Catat otomatis** ✅ (contoh email bank asli menyusul) | Baca notifikasi m-banking/e-wallet + SMS & email bank (chat tidak pernah dibaca) → **dicatat di belakang layar** tanpa membuka app, notif "Tercatat" + Batalkan/Ubah; buang iklan/OTP/tagihan; anti-dobel dengan catatan manual/scan/gajian (≤48 jam); layar Akun; pengingat 21:00 bila belum catat; share gambar ke catat.; layar Privasi & Izin (checklist izin, ⓘ) | 17, 35–39 | Transaksi nyata tercatat benar tanpa buka app, iklan tidak tercatat |
 | **F7 Laporan & export** ✅ | Laporan bulanan, insight, export PDF/Excel bulanan / 3 bulan / setahun | 07, 14, 15, 16 | File terbuka rapi di HP & laptop |
-| **F8 Akun & sinkron** | Login Google/Email, sync ke Supabase, multi-HP, hapus akun & data, PIN/biometrik | 01, 17 | Ganti HP → data kembali utuh |
+| **F8 Akun & sinkron** 🚧 | Login Email (kode 6 angka) ✅, sync ke Supabase ✅, multi-HP ✅, keluar ✅, hapus akun & data ✅; Google Sign-In & PIN/biometrik menyusul | 01, 17, 47–52 | Ganti HP → data kembali utuh |
 | **F9 Siap rilis** | Ikon & nama app ✅, font dibundel ✅, keystore, Crashlytics, kebijakan privasi, Data Safety form, uji tertutup | – | Lolos review & tayang di Play Store |
 
 ---
@@ -104,7 +104,8 @@ Setiap fase selesai = **bisa dipakai di HP**, dites, dan dicocokkan dengan PNG d
 1. Satu fase = satu branch git → merge ke `main` setelah lolos: `flutter analyze` bersih, test hijau, dicek di HP.
 2. Logika uang & tanggal selalu punya unit test (kasus: tanggal gajian 31 di Februari, alokasi ≠ 100%, transfer, rollover).
 3. Jangan simpan kunci rahasia di kode. `SUPABASE_URL` / `ANON_KEY` lewat `--dart-define` / file env yang di-`.gitignore`.
-4. Setiap perubahan skema DB = migrasi drift + migrasi SQL Supabase.
+4. Setiap perubahan skema DB = migrasi drift. Server (`supabase/migrations`) menyimpan baris sebagai JSON, cukup diubah kalau cara sinkronnya berubah. Tabel data baru wajib masuk `syncedTables` (urut induk → anak).
+5. Build dengan akun: `flutter build apk --release --dart-define-from-file=supabase.env.json` (file berisi `SUPABASE_URL` & `SUPABASE_KEY`, di-.gitignore). Tanpa file itu app jalan offline tanpa akun.
 
 ---
 

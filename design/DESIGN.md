@@ -157,6 +157,12 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 | 43 | Bikin kantong sendiri (onboarding) | Ringkasan "100% teralokasi" + bar, "N kantong · Maks 6", daftar kantong (ikon, nama, jenis · nominal, % pill) → 21, kartu Tambah kantong, Pakai kantong ini → 42 |
 | 45 | Hapus kantong | Bottom sheet di atas 21: "Hapus <nama>?", sisa saldo & jumlah catatan dipindah ke kantong pilihan (chip), Hapus & pindahin (merah) / Batal |
 | 46 | Scan struk kebaca | Sama dengan 04, sudut bracket menyatu jadi bingkai lime penuh, garis scan berhenti, hint lime "Kebaca! Tahan bentar…" | Otomatis → 09 |
+| 47 | Masuk pakai email | Back, "Masuk pakai email", sub "Kami kirim kode 6 angka…", field Email (ikon mail, border ink saat fokus), info gembok "Datamu tersimpan di akun…", Kirim kode | → 48 |
+| 48 | Masukin kode | Back, "Cek emailmu", 6 kotak angka (kotak aktif border ink), "Belum masuk? Kirim ulang 0:42", keypad angka tanpa 000. Angka ke-6 → langsung dicek (tanpa tombol). Akun & HP sama-sama berisi → sheet "Akun ini udah ada isinya" | Akun kosong → data HP diunggah · HP kosong → tarik data akun → 03 · belum ada budget → 27 |
+| 49 | Akun (sudah masuk) | Seperti 17 + email di kartu profil, section **Akun**: "Tersimpan di akun · Terakhir sinkron 09.20" (badge check lime; gagal → cloud-off merah), "Hapus akun & data" (merah), kartu Keluar merah | Keluar → 51 · Hapus → 52 |
+| 50 | Akun (belum masuk) | Kartu lime "Simpan datamu ke akun · Aman kalau HP hilang atau ganti HP" + tombol "Masuk pakai email" menggantikan kartu profil; tanpa section Akun & Keluar | → 47 |
+| 51 | Keluar | Sheet di atas 49: ikon logout merah, "Keluar dari akun?", "Datamu tetap aman di akun…", Keluar (merah penuh) / Batal. Ada perubahan belum terkirim (offline) → sheet "Ada yang belum tersimpan" / Tetap keluar | → 01 |
+| 52 | Hapus akun | Sheet di atas 49: ikon sampah merah, "Hapus akun & semua data?", field "Ketik HAPUS buat lanjut", Hapus permanen (aktif setelah ketik HAPUS) / Batal | → 01 |
 | 32 | Beranda (penghasilan tidak tetap) | Kartu "Saldo kamu sekarang" + "Masuk bulan ini", 2 kartu cepat Scan struk & Tambah pemasukan. **Tanpa** tombol "+ Pemasukan" di kartu saldo (dobel dengan kartu Tambah pemasukan; keputusan 26 Sep 2026, PNG lama masih menampilkannya) |
 
 ---

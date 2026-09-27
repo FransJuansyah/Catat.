@@ -14,6 +14,7 @@ import 'data/providers.dart';
 import 'data/receipt_scanner.dart';
 import 'domain/types.dart';
 import 'features/account/account_screen.dart';
+import 'features/account/sign_in_screens.dart';
 import 'features/balance/adjust_balance_screen.dart';
 import 'features/expense/expense_detail_screen.dart';
 import 'features/expense/expense_form_screen.dart';
@@ -60,6 +61,18 @@ GoRouter createRouter({
   routes: [
     GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
     GoRoute(path: '/masuk', builder: (_, _) => const WelcomeScreen()),
+    GoRoute(
+      path: '/masuk-email',
+      builder: (_, state) =>
+          SignInEmailScreen(from: state.uri.queryParameters['dari']),
+    ),
+    GoRoute(
+      path: '/masuk-kode',
+      builder: (_, state) => SignInCodeScreen(
+        email: state.uri.queryParameters['email'] ?? '',
+        from: state.uri.queryParameters['dari'],
+      ),
+    ),
     GoRoute(path: '/sumber-uang', builder: (_, _) => const SourceScreen()),
     GoRoute(path: '/atur-gaji', builder: (_, _) => const SalarySetupScreen()),
     GoRoute(

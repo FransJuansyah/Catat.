@@ -22,17 +22,20 @@ int applyAmountKey(int amount, String key) {
 }
 
 /// Keypad angka 4×3 (desain layar 11). Tahan ⌫ untuk menghapus semua.
+/// [digitsOnly] = tanpa tombol 000 (kode masuk, layar 48).
 class AmountKeypad extends StatelessWidget {
   const AmountKeypad({
     super.key,
     required this.onKey,
     required this.onClear,
     this.keyColor = AppColors.card,
+    this.digitsOnly = false,
   });
 
   final ValueChanged<String> onKey;
   final VoidCallback onClear;
   final Color keyColor;
+  final bool digitsOnly;
 
   static const _rows = [
     ['1', '2', '3'],
@@ -52,30 +55,32 @@ class AmountKeypad extends StatelessWidget {
               for (final (c, key) in row.indexed) ...[
                 if (c > 0) const SizedBox(width: 8),
                 Expanded(
-                  child: Material(
-                    color: keyColor,
-                    borderRadius: BorderRadius.circular(AppRadius.input),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => onKey(key),
-                      onLongPress: key == 'del' ? onClear : null,
-                      child: SizedBox(
-                        height: 54,
-                        child: Center(
-                          child: key == 'del'
-                              ? const Icon(
-                                  LucideIcons.delete,
-                                  size: 22,
-                                  color: AppColors.ink,
-                                )
-                              : Text(
-                                  key,
-                                  style: AppText.style(22, AppText.w700),
-                                ),
+                  child: key == '000' && digitsOnly
+                      ? const SizedBox(height: 54)
+                      : Material(
+                          color: keyColor,
+                          borderRadius: BorderRadius.circular(AppRadius.input),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => onKey(key),
+                            onLongPress: key == 'del' ? onClear : null,
+                            child: SizedBox(
+                              height: 54,
+                              child: Center(
+                                child: key == 'del'
+                                    ? const Icon(
+                                        LucideIcons.delete,
+                                        size: 22,
+                                        color: AppColors.ink,
+                                      )
+                                    : Text(
+                                        key,
+                                        style: AppText.style(22, AppText.w700),
+                                      ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ],

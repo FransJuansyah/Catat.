@@ -5,15 +5,19 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
+import '../../data/account.dart';
 import '../../data/auto_capture.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/types.dart';
+import 'account_sheets.dart';
 
-/// Layar 17 / 38 · Akun. Login, Keamanan & Keluar menyusul di F8.
+/// Layar 17 / 38 · Akun. 49 = sudah masuk (status sinkron, hapus akun,
+/// keluar), 50 = belum masuk (ajakan simpan ke akun). PIN menyusul.
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -50,6 +54,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   Widget build(BuildContext context) {
     final home = ref.watch(homeSummaryProvider).value;
     final status = ref.watch(autoStatusProvider).value ?? const AutoStatus();
+    final account = ref.watch(accountProvider);
 
     return SafeArea(
       bottom: false,
@@ -66,7 +71,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             style: AppText.style(26, AppText.w800, spacingPercent: -3),
           ),
           const SizedBox(height: 16),
-          _ProfileCard(name: home?.userName ?? ''),
+          if (cloudEnabled && !account.signedIn)
+            _SaveToAccountCard(
+              onTap: () => context.push('/masuk-email?dari=akun'),
+            )
+          else
+            _ProfileCard(name: home?.userName ?? '', email: account.email),
           const SizedBox(height: AppSpace.section),
           _label('Keuangan'),
           ListCard(
@@ -118,9 +128,131 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
             ],
           ),
+          if (account.signedIn) ...[
+            const SizedBox(height: AppSpace.section),
+            _label('Akun'),
+            ListCard(
+              children: [
+                _Row(
+                  icon: LucideIcons.cloudCheck,
+                  title: 'Tersimpan di akun',
+                  subtitle: _syncText(account),
+                  subtitleColor: account.failed ? AppColors.danger : null,
+                  trailing: account.syncing
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.ink,
+                          ),
+                        )
+                      : IconBadge(
+                          icon: account.failed
+                              ? LucideIcons.cloudOff
+                              : LucideIcons.check,
+                          background: account.failed
+                              ? AppColors.dangerSoft
+                              : AppColors.lime,
+                          color: account.failed
+                              ? AppColors.danger
+                              : AppColors.ink,
+                          size: 24,
+                          iconSize: 14,
+                        ),
+                  onTap: () => ref.read(accountProvider.notifier).syncNow(),
+                ),
+                _Row(
+                  icon: LucideIcons.trash2,
+                  iconColor: AppColors.danger,
+                  iconBackground: AppColors.dangerSoft,
+                  title: 'Hapus akun & data',
+                  titleColor: AppColors.danger,
+                  subtitle: 'Hapus permanen dari akun & HP ini',
+                  onTap: _deleteAccount,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: _signOut,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.logOut,
+                        size: 22,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Keluar',
+                        style: AppText.style(
+                          16,
+                          AppText.w800,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String _syncText(AccountState a) {
+    if (a.syncing) return 'Lagi sinkron…';
+    if (a.failed) return 'Belum tersinkron, dicoba lagi otomatis';
+    final last = a.lastSync;
+    if (last == null) return 'Belum pernah sinkron';
+    String two(int n) => n.toString().padLeft(2, '0');
+    final hm = '${two(last.hour)}.${two(last.minute)}';
+    final now = DateTime.now();
+    final today =
+        last.year == now.year && last.month == now.month && last.day == now.day;
+    return today
+        ? 'Terakhir sinkron $hm'
+        : 'Terakhir sinkron ${two(last.day)}/${two(last.month)} $hm';
+  }
+
+  Future<void> _signOut() async {
+    if (!await showSignOutSheet(context)) return;
+    final account = ref.read(accountProvider.notifier);
+    try {
+      await account.signOut();
+    } on PendingChangesException catch (e) {
+      if (!mounted || !await showUnsyncedSheet(context, e.count)) return;
+      await account.signOut(force: true);
+    }
+    if (mounted) context.go('/masuk');
+  }
+
+  Future<void> _deleteAccount() async {
+    if (!await showDeleteAccountSheet(context)) return;
+    try {
+      await ref.read(accountProvider.notifier).deleteAccount();
+      if (mounted) context.go('/masuk');
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Akun belum bisa dihapus. Cek internet, lalu coba lagi.',
+          ),
+        ),
+      );
+    }
   }
 
   Widget _incomeRow(BuildContext context, HomeSummary home) {
@@ -167,9 +299,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.name});
+  const _ProfileCard({required this.name, this.email});
 
   final String name;
+  final String? email;
 
   @override
   Widget build(BuildContext context) {
@@ -197,11 +330,27 @@ class _ProfileCard extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              shown,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.style(18, AppText.w800),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shown,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.style(18, AppText.w800),
+                ),
+                if (email != null)
+                  Text(
+                    email!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.style(
+                      13,
+                      AppText.w500,
+                      color: AppColors.muted,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -219,10 +368,16 @@ class _Row extends StatelessWidget {
     this.subtitleColor,
     this.trailing,
     this.onTap,
+    this.titleColor,
+    this.iconColor = AppColors.ink,
+    this.iconBackground = AppColors.track,
   });
 
   final IconData icon;
   final String title;
+  final Color? titleColor;
+  final Color iconColor;
+  final Color iconBackground;
   final String? subtitle;
   final Color? subtitleColor;
   final Widget? trailing;
@@ -238,8 +393,8 @@ class _Row extends StatelessWidget {
           children: [
             IconBadge(
               icon: icon,
-              background: AppColors.track,
-              color: AppColors.ink,
+              background: iconBackground,
+              color: iconColor,
               size: AppSize.badge,
               iconSize: 20,
               square: true,
@@ -249,7 +404,14 @@ class _Row extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppText.style(16, AppText.w800)),
+                  Text(
+                    title,
+                    style: AppText.style(
+                      16,
+                      AppText.w800,
+                      color: titleColor ?? AppColors.ink,
+                    ),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
@@ -273,6 +435,65 @@ class _Row extends StatelessWidget {
                 ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Layar 50 · Belum masuk: ajakan simpan data ke akun.
+class _SaveToAccountCard extends StatelessWidget {
+  const _SaveToAccountCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.cardPad),
+      decoration: BoxDecoration(
+        color: AppColors.lime,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const IconBadge(
+                icon: LucideIcons.cloudCheck,
+                background: AppColors.ink,
+                color: AppColors.lime,
+                size: 44,
+                iconSize: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Simpan datamu ke akun',
+                      style: AppText.style(16, AppText.w800),
+                    ),
+                    Text(
+                      'Aman kalau HP hilang atau ganti HP',
+                      style: AppText.style(
+                        13,
+                        AppText.w500,
+                        color: AppColors.limeText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AppButton(
+            label: 'Masuk pakai email',
+            icon: LucideIcons.mail,
+            onPressed: onTap,
+          ),
+        ],
       ),
     );
   }

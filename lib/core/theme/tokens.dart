@@ -17,6 +17,9 @@ abstract final class AppColors {
   static const darkSurface = Color(0xFF26262A);
   static const track = Color(0xFFF0F0EA);
   static const danger = Color(0xFFE5484D);
+
+  /// Latar ikon merah (hapus kantong, keluar, hapus akun).
+  static const dangerSoft = Color(0xFFFFECEC);
   static const success = Color(0xFF12A36B);
   static const disabledBg = Color(0xFFDADAD4);
   static const segmentBg = Color(0xFFE7E7E1);

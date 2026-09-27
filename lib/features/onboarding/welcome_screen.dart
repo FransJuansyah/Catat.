@@ -7,17 +7,30 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../data/account.dart';
 
 /// Layar 01 · Masuk / Daftar.
 ///
-/// Login Google/Email sungguhan dipasang di fase F8 (Supabase). Sampai saat itu
-/// kedua tombol langsung melanjutkan ke pengaturan gaji; data tersimpan di HP.
+/// Email → layar 47 (akun Supabase, F8). Login Google menyusul. Tanpa kunci
+/// Supabase (build lokal) semua tombol langsung ke pengaturan gaji, data di HP.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     void start() => context.push('/sumber-uang');
+    void email() => cloudEnabled ? context.push('/masuk-email') : start();
+    void google() {
+      if (!cloudEnabled) return start();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Masuk pakai Google segera hadir. Pakai email dulu ya.',
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -78,17 +91,17 @@ class WelcomeScreen extends StatelessWidget {
                     const _SalarySplitIllustration(),
                     const Spacer(),
                     const SizedBox(height: 24),
-                    _GoogleButton(onPressed: start),
+                    _GoogleButton(onPressed: google),
                     const SizedBox(height: 12),
                     AppButton(
                       label: 'Daftar pakai Email',
                       icon: LucideIcons.mail,
-                      onPressed: start,
+                      onPressed: email,
                     ),
                     const SizedBox(height: 14),
                     Center(
                       child: GestureDetector(
-                        onTap: start,
+                        onTap: email,
                         child: Text.rich(
                           TextSpan(
                             children: [

@@ -42,6 +42,12 @@ class BudgetRepository {
 
   String _newId() => _uuid.v4();
 
+  /// Id tetap untuk baris turunan (periode, jatah, pembagian pemasukan,
+  /// rollover): dua HP yang membuatnya offline dapat id yang sama, jadi
+  /// tidak dobel setelah sinkron.
+  String _keyId(String kind, List<String> parts) =>
+      _uuid.v5(Namespace.url.value, 'catat:$kind:${parts.join('|')}');
+
   // ---------------------------------------------------------------- setup
 
   Future<bool> isSetUp() async => await _salarySettings() != null;
@@ -142,7 +148,7 @@ class BudgetRepository {
     // "Tambah otomatis" mati → periode dibuat dengan pemasukan 0, user mengisi
     // sendiri lewat layar 18 (setPeriodSalary).
     final salary = running || !settings.autoAdd ? 0 : settings.netSalary;
-    final periodId = _newId();
+    final periodId = _keyId('period', [period.start.toIso8601String()]);
     await _db
         .into(_db.periods)
         .insert(
@@ -163,7 +169,7 @@ class BudgetRepository {
             .into(_db.periodAllocations)
             .insert(
               PeriodAllocationsCompanion.insert(
-                id: _newId(),
+                id: _keyId('alloc', [periodId, p.id]),
                 periodId: periodId,
                 pocketId: p.id,
                 amount: amounts[p.id]!,
@@ -210,7 +216,7 @@ class BudgetRepository {
           .into(_db.transfers)
           .insert(
             TransfersCompanion.insert(
-              id: _newId(),
+              id: _keyId('rollover', [previous.id, p.id]),
               fromPocketId: p.id,
               toPocketId: emergency.id,
               periodId: previous.id,
@@ -312,7 +318,7 @@ class BudgetRepository {
           .into(_db.periodAllocations)
           .insert(
             PeriodAllocationsCompanion.insert(
-              id: _newId(),
+              id: _keyId('alloc', [periodId, p.id]),
               periodId: periodId,
               pocketId: p.id,
               amount: amounts[p.id]!,
@@ -477,7 +483,7 @@ class BudgetRepository {
             .into(_db.periodAllocations)
             .insert(
               PeriodAllocationsCompanion.insert(
-                id: _newId(),
+                id: _keyId('alloc', [a.periodId, to]),
                 periodId: a.periodId,
                 pocketId: to,
                 amount: a.amount,
@@ -517,7 +523,7 @@ class BudgetRepository {
             .into(_db.incomeAllocations)
             .insert(
               IncomeAllocationsCompanion.insert(
-                id: _newId(),
+                id: _keyId('ialloc', [a.incomeId, to]),
                 incomeId: a.incomeId,
                 pocketId: to,
                 amount: a.amount,
@@ -656,7 +662,7 @@ class BudgetRepository {
             .into(_db.incomeAllocations)
             .insert(
               IncomeAllocationsCompanion.insert(
-                id: _newId(),
+                id: _keyId('ialloc', [id, p.id]),
                 incomeId: id,
                 pocketId: p.id,
                 amount: parts[p.id] ?? 0,
@@ -727,7 +733,7 @@ class BudgetRepository {
               .into(_db.incomeAllocations)
               .insert(
                 IncomeAllocationsCompanion.insert(
-                  id: _newId(),
+                  id: _keyId('ialloc', [id, p.id]),
                   incomeId: id,
                   pocketId: p.id,
                   amount: parts[p.id] ?? 0,
