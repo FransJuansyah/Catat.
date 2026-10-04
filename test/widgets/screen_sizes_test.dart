@@ -168,7 +168,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         clockProvider.overrideWithValue(() => now),
-        autoCaptureProvider.overrideWithValue(FakeBridge()),
+        deviceBridgeProvider.overrideWithValue(FakeBridge()),
         receiptScannerProvider.overrideWithValue(_Scanner()),
         payslipReaderProvider.overrideWithValue(_Slip()),
       ],

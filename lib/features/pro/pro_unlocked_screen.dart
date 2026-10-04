@@ -84,7 +84,7 @@ class _ProUnlockedScreenState extends State<ProUnlockedScreen> {
                     Appear(
                       delay: Appear.step(1),
                       child: Text(
-                        'Scan struk, catat otomatis & export bisa kamu pakai selamanya.',
+                        'Scan struk otomatis & export bisa kamu pakai selamanya.',
                         textAlign: TextAlign.center,
                         style: AppText.style(
                           15,

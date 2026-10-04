@@ -81,17 +81,17 @@ object DailyReminder {
     fun fire(context: Context) {
         if (!isOn(context)) return
         schedule(context)
-        if (hasEntryToday(context) || !AutoCapture.canPostNotifications(context)) return
+        if (hasEntryToday(context) || !AppNotifications.canPost(context)) return
         val open = PendingIntent.getActivity(
             context,
             NOTIFICATION_ID,
             Intent(context, MainActivity::class.java).apply {
-                action = AutoCapture.ACTION_REMINDER
+                action = AppNotifications.ACTION_REMINDER
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val notification = NotificationCompat.Builder(context, AutoCapture.CHANNEL_REMINDER)
+        val notification = NotificationCompat.Builder(context, AppNotifications.CHANNEL_REMINDER)
             .setSmallIcon(R.drawable.ic_stat_catat)
             .setContentTitle("Hari ini belum ada catatan")
             .setContentText("Tadi jajan apa? Catat sebentar, biar kantong tetap aman.")

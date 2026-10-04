@@ -9,7 +9,7 @@ import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
-import '../../data/auto_capture.dart';
+import '../../data/device_bridge.dart';
 import '../../data/providers.dart';
 import 'privacy_info_sheet.dart';
 import 'privacy_items.dart';
@@ -33,14 +33,14 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   late final AppLifecycleListener _lifecycle;
   bool _busy = false;
 
-  AutoCaptureBridge get _bridge => ref.read(autoCaptureProvider);
+  DeviceBridge get _bridge => ref.read(deviceBridgeProvider);
 
   @override
   void initState() {
     super.initState();
     // Kembali dari Pengaturan Android → cek izin lagi.
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.invalidate(autoStatusProvider),
+      onResume: () => ref.invalidate(deviceStatusProvider),
     );
   }
 
@@ -50,10 +50,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     super.dispose();
   }
 
-  static bool isOn(PrivacyItem item, AutoStatus s) => switch (item) {
+  static bool isOn(PrivacyItem item, DeviceStatus s) => switch (item) {
     PrivacyItem.camera => s.cameraGranted,
     PrivacyItem.notifications => s.reminder && s.canNotify,
-    _ => s.sources.contains(item.source),
   };
 
   Future<void> _run(Future<void> Function() task) async {
@@ -62,7 +61,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     try {
       await task();
     } finally {
-      ref.invalidate(autoStatusProvider);
+      ref.invalidate(deviceStatusProvider);
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -70,31 +69,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   void _toast(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
-  /// Catat otomatis = fitur Pro: trial habis & belum beli → layar 53.
-  Future<bool> _proUnlocked() async {
-    final status = await ref.read(proRepositoryProvider).status();
-    if (status.unlocked) return true;
-    if (mounted) await context.push('/pro');
-    return false;
-  }
-
-  /// Sumber catat otomatis: selalu jelaskan dulu (sheet ⓘ), baru minta izin.
-  Future<void> _enableSources(
-    List<PrivacyItem> items,
-    AutoStatus status,
-  ) async {
-    await _bridge.requestNotifications();
-    for (final item in items) {
-      await _bridge.setSource(item.source!, true);
-    }
-    if (!status.listenerAccess) await _bridge.openAccessSettings();
-  }
-
-  Future<void> _toggle(
-    PrivacyItem item,
-    bool on,
-    AutoStatus status,
-  ) => _run(() async {
+  Future<void> _toggle(PrivacyItem item, bool on) => _run(() async {
     switch (item) {
       case PrivacyItem.camera:
         if (on) {
@@ -109,31 +84,20 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       case PrivacyItem.notifications:
         if (on) await _bridge.requestNotifications();
         await _bridge.setReminder(on);
-      default:
-        if (!on) {
-          await _bridge.setSource(item.source!, false);
-        } else if (!await _proUnlocked()) {
-          return;
-        } else if (mounted && await showPrivacyInfo(context, item, on: false)) {
-          await _enableSources([item], status);
-        }
     }
   });
 
-  Future<void> _enableRecommended(AutoStatus status) => _run(() async {
-    if (!await _proUnlocked() || !mounted) return;
-    if (!await showPrivacyInfo(context, PrivacyItem.financeApp, on: false)) {
-      return;
-    }
+  /// "Nyalakan yang disarankan": kamera & pengingat.
+  Future<void> _enableRecommended() => _run(() async {
     await _bridge.requestCamera();
+    await _bridge.requestNotifications();
     await _bridge.setReminder(true);
-    await _enableSources([PrivacyItem.financeApp], status);
   });
 
-  Future<void> _info(PrivacyItem item, AutoStatus status) async {
+  Future<void> _info(PrivacyItem item, DeviceStatus status) async {
     final on = isOn(item, status);
     if (await showPrivacyInfo(context, item, on: on) && !on) {
-      await _toggle(item, true, status);
+      await _toggle(item, true);
     }
   }
 
@@ -144,7 +108,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = ref.watch(autoStatusProvider).value ?? const AutoStatus();
+    final status =
+        ref.watch(deviceStatusProvider).value ?? const DeviceStatus();
 
     Widget group(String label, List<PrivacyItem> items) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,11 +127,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               _PrivacyRow(
                 item: item,
                 on: isOn(item, status),
-                subtitle: widget.onboarding || item.source == null
-                    ? item.description
-                    : (isOn(item, status) ? 'Aktif' : 'Mati'),
+                subtitle: item.description,
                 onInfo: () => _info(item, status),
-                onChanged: _busy ? null : (on) => _toggle(item, on, status),
+                onChanged: _busy ? null : (on) => _toggle(item, on),
               ),
           ],
         ),
@@ -212,13 +175,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     ] else
                       const AppTopBar(title: 'Privasi & Izin'),
                     const SizedBox(height: AppSpace.sectionTight),
-                    group('Catat otomatis', PrivacyItem.autoCapture),
-                    if (status.needsAccess) ...[
-                      const SizedBox(height: AppSpace.sectionTight),
-                      _AccessWarning(onTap: _bridge.openAccessSettings),
-                    ],
-                    const SizedBox(height: AppSpace.sectionTight),
-                    group('Fitur lain', PrivacyItem.others),
+                    group('Izin', PrivacyItem.values),
                     const SizedBox(height: AppSpace.sectionTight),
                     const _NeverCard(),
                     if (widget.onboarding) ...[
@@ -226,9 +183,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       const SizedBox(height: AppSpace.sectionTight),
                       Center(
                         child: TextButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => _enableRecommended(status),
+                          onPressed: _busy ? null : _enableRecommended,
                           icon: const Icon(
                             LucideIcons.check,
                             size: 16,
@@ -332,48 +287,6 @@ class _PrivacyRow extends StatelessWidget {
   }
 }
 
-class _AccessWarning extends StatelessWidget {
-  const _AccessWarning({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.warnBg,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              const Icon(
-                LucideIcons.triangleAlert,
-                size: 18,
-                color: AppColors.warnIcon,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Izin "Akses notifikasi" Android belum nyala. Ketuk buat '
-                  'atur.',
-                  style: AppText.style(
-                    13,
-                    AppText.w700,
-                    color: AppColors.warnText,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _NeverCard extends StatelessWidget {
   const _NeverCard();
 
@@ -393,8 +306,8 @@ class _NeverCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Nggak pernah diakses: chat (WhatsApp dll.), kontak, lokasi, '
-              'mikrofon. Data tersimpan di HP ini aja.',
+              'Nggak pernah diakses: notifikasi aplikasi lain, SMS, chat, '
+              'kontak, lokasi, mikrofon. Data tersimpan di HP ini aja.',
               style: AppText.style(12, AppText.w500, color: AppColors.muted),
             ),
           ),

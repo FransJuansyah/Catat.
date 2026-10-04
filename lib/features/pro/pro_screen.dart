@@ -24,7 +24,6 @@ class ProScreen extends ConsumerWidget {
       'Scan struk otomatis',
       'Arahin kamera, langsung kecatat',
     ),
-    (LucideIcons.bell, 'Catat otomatis', 'Dari notif m-banking & e-wallet'),
     (LucideIcons.download, 'Export PDF & Excel', 'Laporan rapi buat dibagi'),
   ];
 

@@ -11,7 +11,7 @@ import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/list_card.dart';
 import '../../data/account.dart';
 import '../../data/app_lock.dart';
-import '../../data/auto_capture.dart';
+import '../../data/device_bridge.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pro.dart';
@@ -36,7 +36,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     super.initState();
     // Kembali dari Pengaturan Android → cek izin lagi.
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.invalidate(autoStatusProvider),
+      onResume: () => ref.invalidate(deviceStatusProvider),
     );
   }
 
@@ -47,16 +47,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   }
 
   Future<void> _setReminder(bool on) async {
-    final bridge = ref.read(autoCaptureProvider);
+    final bridge = ref.read(deviceBridgeProvider);
     if (on) await bridge.requestNotifications();
     await bridge.setReminder(on);
-    ref.invalidate(autoStatusProvider);
+    ref.invalidate(deviceStatusProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final home = ref.watch(homeSummaryProvider).value;
-    final status = ref.watch(autoStatusProvider).value ?? const AutoStatus();
+    final status =
+        ref.watch(deviceStatusProvider).value ?? const DeviceStatus();
     final account = ref.watch(accountProvider);
     final pro = ref.watch(proStatusProvider).value;
     final lock = ref.watch(lockStateProvider).value ?? const AppLockState();
@@ -129,14 +130,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   onChanged: _setReminder,
                 ),
               ),
-              // Layar 38: catat otomatis, kamera & notifikasi di satu tempat.
+              // Layar 38: kamera & notifikasi di satu tempat.
               _Row(
                 icon: LucideIcons.shieldCheck,
                 title: 'Privasi & izin',
-                subtitle: status.needsAccess
-                    ? 'Izin belum nyala, ketuk buat atur'
-                    : 'Catat otomatis, kamera, notifikasi',
-                subtitleColor: status.needsAccess ? AppColors.danger : null,
+                subtitle: 'Kamera & notifikasi',
                 onTap: () => context.push('/privasi'),
               ),
               _Row(

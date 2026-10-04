@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Catat otomatis: notif "Catat?" & pengingat harian. -->
+    <!-- Pengingat harian (dijadwal ulang setelah HP restart). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Terbawa dari plugin kamera (rekam video & simpan ke galeri). catat. tidak
@@ -51,29 +51,6 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
-        <!-- Baca notifikasi bank & e-wallet (hanya daftar di AutoCapture.APPS). -->
-        <service
-            android:name=".CatatNotificationListener"
-            android:exported="true"
-            android:label="catat. — catat otomatis"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-            <!-- Android 12+: cukup "Percakapan" (SMS bank) & "Pemberitahuan"
-                 (m-banking, e-wallet, email). Real-time & Tidak Berbunyi
-                 dimatikan dan tidak bisa dinyalakan. -->
-            <meta-data
-                android:name="android.service.notification.default_filter_types"
-                android:value="conversations|alerting" />
-            <meta-data
-                android:name="android.service.notification.disabled_filter_types"
-                android:value="ongoing|silent" />
-        </service>
-        <!-- Tombol "Batalkan" di notif "Tercatat". -->
-        <receiver
-            android:name=".UndoRecordReceiver"
-            android:exported="false" />
         <receiver
             android:name=".DailyReminderReceiver"
             android:exported="false">

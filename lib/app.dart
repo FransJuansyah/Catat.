@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_frame.dart';
 import 'core/widgets/app_shell.dart';
-import 'data/auto_capture.dart';
+import 'data/device_bridge.dart';
 import 'data/providers.dart';
 import 'data/receipt_scanner.dart';
 import 'domain/types.dart';
@@ -98,7 +98,6 @@ GoRouter createRouter({
     GoRoute(
       path: '/pemasukan',
       builder: (_, state) {
-        // ?amount=&title=&time= (dari notifikasi uang masuk).
         final q = state.uri.queryParameters;
         return IncomeFormScreen(
           initialDate: DateTime.tryParse(q['date'] ?? ''),
@@ -213,7 +212,7 @@ GoRouter createRouter({
           initialDate: DateTime.tryParse(q['date'] ?? ''),
           initialPocketId: q['pocket'],
           editId: q['edit'],
-          // Dari notifikasi bank: ?amount=&title=&time=&pocketType=&source=
+          // Isian awal lewat query: ?amount=&title=&time=&pocketType=&source=
           initialAmount: int.tryParse(q['amount'] ?? ''),
           initialTitle: q['title'],
           initialTime: DateTime.tryParse(q['time'] ?? ''),
@@ -293,7 +292,6 @@ class CatatApp extends ConsumerStatefulWidget {
 class _CatatAppState extends ConsumerState<CatatApp>
     with WidgetsBindingObserver {
   StreamSubscription<void>? _launches;
-  StreamSubscription<void>? _dataChanges;
   bool? _compact;
 
   /// HP dikunci tegak (layar keypad tidak muat saat mendatar); tablet & HP
@@ -322,20 +320,9 @@ class _CatatAppState extends ConsumerState<CatatApp>
     // Dengarkan Google Play sejak awal: pembelian yang selesai saat app
     // tertutup (mis. bayar via DANA belakangan) tetap tercatat.
     ref.listenManual(proProvider, (_, _) {});
-    final bridge = ref.read(autoCaptureProvider);
-    // Aplikasi sudah terbuka lalu notif catat. / share diketuk.
-    _launches = bridge.launches.listen((_) {
+    // Aplikasi sudah terbuka lalu share / notif pengingat diketuk.
+    _launches = ref.read(deviceBridgeProvider).launches.listen((_) {
       if (ref.read(appReadyProvider)) unawaited(_openLaunch());
-    });
-    // Catat otomatis menulis lewat koneksi DB lain → layar ikut dimuat ulang.
-    _dataChanges = bridge.dataChanges.listen((_) {
-      final db = ref.read(databaseProvider);
-      db.markTablesUpdated([
-        db.expenses,
-        db.expenseItems,
-        db.incomes,
-        db.incomeAllocations,
-      ]);
     });
   }
 
@@ -343,26 +330,25 @@ class _CatatAppState extends ConsumerState<CatatApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_launches?.cancel());
-    unawaited(_dataChanges?.cancel());
     super.dispose();
   }
 
-  /// Buka layar untuk aksi pembukaan (notif bank, share gambar, pengingat)
-  /// di atas Beranda.
+  /// Buka layar untuk aksi pembukaan (share gambar, pengingat) di atas
+  /// Beranda.
   Future<void> _openLaunch() async {
-    final action = await ref.read(autoCaptureProvider).takeLaunch();
+    final action = await ref.read(deviceBridgeProvider).takeLaunch();
     if (action == null) return;
-    if (action is ShareLaunch) {
-      unawaited(_router.push('/baca-struk', extra: action.imagePath));
-    } else {
-      final location = launchLocation(action);
-      if (location != null) unawaited(_router.push(location));
-    }
+    unawaited(
+      _router.push(
+        launchLocation(action),
+        extra: action is ShareLaunch ? action.imagePath : null,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Dibuka dingin dari notif: tunggu Splash sampai di Beranda.
+    // Dibuka dingin dari share / pengingat: tunggu Splash sampai di Beranda.
     ref.listen(appReadyProvider, (_, ready) {
       if (ready) unawaited(_openLaunch());
     });

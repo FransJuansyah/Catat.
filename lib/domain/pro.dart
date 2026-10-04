@@ -1,5 +1,5 @@
 /// Fitur yang terkunci setelah trial habis (catat. Pro, layar 53).
-enum ProFeature { scan, autoCapture, export }
+enum ProFeature { scan, export }
 
 /// Status catat. Pro: trial 7 hari sejak selesai daftar, lalu sekali bayar
 /// untuk selamanya. Catat manual, kantong & laporan di layar selalu gratis.

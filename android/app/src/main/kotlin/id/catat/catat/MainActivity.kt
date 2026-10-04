@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,17 +16,17 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterFragmentActivity() {
-    private var autoChannel: MethodChannel? = null
+    private var deviceChannel: MethodChannel? = null
 
-    /// Aksi dari notif catat. / share gambar, menunggu diambil Dart.
+    /// Aksi dari notif pengingat / share gambar, menunggu diambil Dart.
     private var pendingLaunch: Map<String, Any>? = null
     private var permissionResult: MethodChannel.Result? = null
     private var slipResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        current = java.lang.ref.WeakReference(this)
-        AutoCapture.createChannels(this)
+        AppNotifications.createChannels(this)
+        AppNotifications.cleanupLegacy(this)
         Thread { SlipFile.cleanCache(this) }.start()
         pendingLaunch = launchOf(intent)
     }
@@ -37,25 +36,14 @@ class MainActivity : FlutterFragmentActivity() {
         setIntent(intent)
         launchOf(intent)?.let {
             pendingLaunch = it
-            autoChannel?.invokeMethod("launch", null)
+            deviceChannel?.invokeMethod("launch", null)
         }
     }
 
     private fun launchOf(intent: Intent?): Map<String, Any>? {
         intent ?: return null
         return when (intent.action) {
-            AutoCapture.ACTION_CAPTURE -> {
-                val id = intent.getStringExtra(AutoCapture.EXTRA_CAPTURE_ID) ?: return null
-                val capture = AutoCapture.take(this, id) ?: return null
-                mapOf("type" to "capture", "capture" to capture)
-            }
-            AutoCapture.ACTION_REMINDER -> mapOf("type" to "reminder")
-            AutoCapture.ACTION_OPEN -> {
-                val route = intent.getStringExtra(AutoCapture.EXTRA_ROUTE) ?: return null
-                // Tombol "Ubah" tidak menutup notif sendiri.
-                NotificationManagerCompat.from(this).cancel(intent.getIntExtra(AutoCapture.EXTRA_NOTIF_ID, 0))
-                mapOf("type" to "route", "route" to route)
-            }
+            AppNotifications.ACTION_REMINDER -> mapOf("type" to "reminder")
             Intent.ACTION_SEND -> {
                 if (intent.type?.startsWith("image/") != true) return null
                 val uri = if (Build.VERSION.SDK_INT >= 33) {
@@ -117,7 +105,7 @@ class MainActivity : FlutterFragmentActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
-            REQUEST_NOTIFICATIONS -> permissionResult?.success(AutoCapture.canPostNotifications(this))
+            REQUEST_NOTIFICATIONS -> permissionResult?.success(AppNotifications.canPost(this))
             REQUEST_CAMERA -> permissionResult?.success(cameraGranted())
         }
         permissionResult = null
@@ -135,30 +123,20 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun autoStatus() = mapOf(
-        "sources" to AutoCapture.SOURCES.associateWith { AutoCapture.isSourceOn(this, it) },
+    private fun deviceStatus() = mapOf(
         "cameraGranted" to cameraGranted(),
-        "listenerAccess" to AutoCapture.hasListenerAccess(this),
-        "canNotify" to AutoCapture.canPostNotifications(this),
+        "canNotify" to AppNotifications.canPost(this),
         "reminder" to DailyReminder.isOn(this),
         "reminderHour" to DailyReminder.HOUR,
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        autoChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/auto")
+        deviceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "id.catat.catat/device")
             .apply {
                 setMethodCallHandler { call, result ->
                     when (call.method) {
-                        "status" -> result.success(autoStatus())
-                        "setSource" -> {
-                            AutoCapture.setSource(
-                                this@MainActivity,
-                                call.argument<String>("source")!!,
-                                call.argument<Boolean>("on")!!,
-                            )
-                            result.success(autoStatus())
-                        }
+                        "status" -> result.success(deviceStatus())
                         "requestCamera" -> requestPermission(
                             Manifest.permission.CAMERA,
                             REQUEST_CAMERA,
@@ -175,16 +153,12 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         "setReminder" -> {
                             DailyReminder.set(this@MainActivity, call.argument<Boolean>("on")!!)
-                            result.success(autoStatus())
-                        }
-                        "openAccessSettings" -> {
-                            openListenerSettings()
-                            result.success(true)
+                            result.success(deviceStatus())
                         }
                         "requestNotifications" -> requestPermission(
                             Manifest.permission.POST_NOTIFICATIONS,
                             REQUEST_NOTIFICATIONS,
-                            AutoCapture.canPostNotifications(this@MainActivity),
+                            AppNotifications.canPost(this@MainActivity),
                             result,
                         )
                         "takeLaunch" -> {
@@ -264,39 +238,9 @@ class MainActivity : FlutterFragmentActivity() {
         startActivity(Intent.createChooser(intent, "Buka laporan").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    /// Android 11+: langsung ke sakelar catat. (beberapa ROM, mis. XOS, salah
-    /// mengarahkan halaman daftar). Versi lama / gagal: halaman daftar.
-    private fun openListenerSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
-                Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
-                android.content.ComponentName(this, CatatNotificationListener::class.java)
-                    .flattenToString(),
-            )
-            try {
-                startActivity(detail)
-                return
-            } catch (e: Exception) {
-                // lanjut ke halaman daftar
-            }
-        }
-        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-    }
-
-    override fun onDestroy() {
-        if (current?.get() === this) current = null
-        super.onDestroy()
-    }
-
     companion object {
         private const val REQUEST_NOTIFICATIONS = 42
         private const val REQUEST_CAMERA = 43
         private const val REQUEST_SLIP = 44
-        private var current: java.lang.ref.WeakReference<MainActivity>? = null
-
-        /// Catatan berubah dari latar belakang → UI yang terbuka muat ulang.
-        fun notifyDataChanged() {
-            current?.get()?.autoChannel?.invokeMethod("dataChanged", null)
-        }
     }
 }

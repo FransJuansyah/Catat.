@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app.dart';
 import 'data/account.dart';
-import 'background.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +20,3 @@ Future<void> main() async {
   await initCloud();
   runApp(const ProviderScope(child: CatatApp()));
 }
-
-/// Mesin latar belakang catat otomatis (lihat BackgroundRecorder.kt).
-@pragma('vm:entry-point')
-Future<void> autoRecordMain() => runAutoRecorder();

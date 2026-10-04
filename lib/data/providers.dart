@@ -15,7 +15,7 @@ import '../domain/types.dart';
 import '../domain/views.dart';
 import 'account.dart';
 import 'app_lock.dart';
-import 'auto_capture.dart';
+import 'device_bridge.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
 import 'payslip_reader.dart';
@@ -422,14 +422,14 @@ final reportExporterProvider = Provider<ReportExporter>(
 // -------------------------------------------------------- catat otomatis
 
 /// Jembatan notifikasi bank, pengingat & share gambar. Di-override di test.
-final autoCaptureProvider = Provider<AutoCaptureBridge>(
-  (ref) => ChannelAutoCaptureBridge(),
+final deviceBridgeProvider = Provider<DeviceBridge>(
+  (ref) => ChannelDeviceBridge(),
 );
 
 /// Status catat otomatis & pengingat. Di-invalidate saat kembali dari
 /// Pengaturan Android.
-final autoStatusProvider = FutureProvider.autoDispose<AutoStatus>(
-  (ref) => ref.watch(autoCaptureProvider).status(),
+final deviceStatusProvider = FutureProvider.autoDispose<DeviceStatus>(
+  (ref) => ref.watch(deviceBridgeProvider).status(),
 );
 
 /// Splash selesai & user sudah di Beranda → aksi pembukaan (notif / share)

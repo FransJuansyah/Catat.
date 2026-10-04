@@ -1,51 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../domain/bank_notification_parser.dart';
-
 /// Satu poin di sheet ⓘ (layar 36).
 enum InfoKind { reads, purpose, off, never }
 
-/// Item di layar Privasi & Izin (35 / 37) + isi sheet ⓘ.
+/// Izin di layar Privasi & Izin (35 / 37) + isi sheet ⓘ (36).
 enum PrivacyItem {
-  financeApp(
-    icon: LucideIcons.landmark,
-    title: 'M-banking & e-wallet',
-    description: 'GoPay, DANA, OVO, BCA, BRImo, dll.',
-    infoTitle: 'Kenapa baca notifikasi\nm-banking & e-wallet?',
-    reads: 'Cuma notifikasi transaksi dari aplikasi bank & e-wallet.',
-    purpose:
-        'Pengeluaran & pemasukan langsung tercatat di belakang layar, '
-        'tanpa buka aplikasi. Salah? Tinggal Batalkan.',
-    off: 'Tetap bisa catat manual atau scan struk.',
-    never: 'Baca chat, kirim data ke server, atau nyimpen isi notifikasi lain.',
-  ),
-  sms(
-    icon: LucideIcons.messageSquare,
-    title: 'SMS dari bank',
-    description: 'Cuma SMS transaksi dari bank',
-    infoTitle: 'Kenapa baca\nSMS dari bank?',
-    reads:
-        'Cuma SMS transaksi dari pengirim bank. Iklan, OTP & tagihan '
-        'dilewati.',
-    purpose:
-        'Transaksi yang cuma dikabari lewat SMS ikut tercatat di belakang '
-        'layar. Salah? Tinggal Batalkan.',
-    off: 'Tetap bisa catat manual atau scan struk.',
-    never: 'Baca SMS pribadi, chat, atau kirim data ke server.',
-  ),
-  email(
-    icon: LucideIcons.mail,
-    title: 'Email dari bank',
-    description: 'Cuma email transaksi dari bank',
-    infoTitle: 'Kenapa baca\nemail dari bank?',
-    reads: 'Cuma notifikasi email transaksi dari bank. Promo dilewati.',
-    purpose:
-        'Transaksi yang dikabari lewat email ikut tercatat di belakang '
-        'layar. Salah? Tinggal Batalkan.',
-    off: 'Tetap bisa catat manual atau scan struk.',
-    never: 'Buka kotak masuk, baca email lain, atau kirim data ke server.',
-  ),
   camera(
     icon: LucideIcons.camera,
     title: 'Kamera',
@@ -59,13 +19,11 @@ enum PrivacyItem {
   notifications(
     icon: LucideIcons.bell,
     title: 'Notifikasi',
-    description: 'Pengingat jam 21:00 & info tercatat',
+    description: 'Pengingat catat jam 21:00',
     infoTitle: 'Kenapa perlu\nnotifikasi?',
-    reads:
-        'Pengingat jam 21:00 kalau hari itu belum catat, dan info '
-        '"Tercatat" dari catat otomatis.',
-    purpose: 'Biar nggak lupa catat & tahu kalau ada yang tercatat otomatis.',
-    off: 'Nggak ada pengingat. Catat otomatis tetap jalan tanpa info.',
+    reads: 'Pengingat jam 21:00 kalau hari itu belum catat.',
+    purpose: 'Biar nggak lupa catat.',
+    off: 'Nggak ada pengingat. Catat tetap bisa kapan aja.',
     never: 'Kirim promo atau iklan.',
   );
 
@@ -91,14 +49,6 @@ enum PrivacyItem {
   final String off;
   final String never;
 
-  /// Sumber catat otomatis (null untuk kamera & notifikasi).
-  NotificationSource? get source => switch (this) {
-    PrivacyItem.financeApp => NotificationSource.financeApp,
-    PrivacyItem.sms => NotificationSource.sms,
-    PrivacyItem.email => NotificationSource.email,
-    _ => null,
-  };
-
   /// Label poin di sheet ⓘ (notifikasi "dikirim", bukan "dibaca").
   String infoLabel(InfoKind kind) => switch (kind) {
     InfoKind.reads =>
@@ -114,11 +64,4 @@ enum PrivacyItem {
     InfoKind.off => off,
     InfoKind.never => never,
   };
-
-  static const autoCapture = [financeApp, sms, email];
-  static const others = [camera, notifications];
-
-  /// "Nyalakan yang disarankan": m-banking, kamera, notifikasi. SMS & email
-  /// lebih pribadi, jadi dibiarkan pilihan user.
-  static const recommended = [financeApp, camera, notifications];
 }
