@@ -235,9 +235,7 @@ class _BalanceHero extends ConsumerWidget {
                           ),
                         ),
                         TextSpan(
-                          text: summary.opening != null
-                              ? 'dari saldo awal ${rupiah(summary.opening!)}'
-                              : 'dari ${rupiah(summary.available)} masuk',
+                          text: 'dari ${rupiahShort(summary.available)} masuk',
                         ),
                       ],
                     ),

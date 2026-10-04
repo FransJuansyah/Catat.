@@ -764,9 +764,7 @@ class _EditSheetState extends State<_EditSheet> {
   late bool _income = widget.draft.income;
   late String? _pocketId = widget.draft.pocketId;
   late final _title = TextEditingController(text: widget.draft.title);
-  late final _amount = TextEditingController(
-    text: rupiah(widget.draft.amount).replaceFirst('Rp ', ''),
-  );
+  late final _amount = TextEditingController(text: rupiah(widget.draft.amount));
 
   int get _amountValue =>
       int.tryParse(_amount.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
@@ -847,12 +845,6 @@ class _EditSheetState extends State<_EditSheet> {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
-                prefixText: 'Rp ',
-                prefixStyle: AppText.style(
-                  36,
-                  AppText.w800,
-                  spacingPercent: -3,
-                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -982,7 +974,7 @@ class _RibuanFormatter extends TextInputFormatter {
     final number = int.parse(
       digits.length > 12 ? digits.substring(0, 12) : digits,
     );
-    final text = rupiah(number).replaceFirst('Rp ', '');
+    final text = rupiah(number);
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),

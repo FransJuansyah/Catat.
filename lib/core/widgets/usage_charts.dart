@@ -101,7 +101,8 @@ class _WeekPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final values = chart.values;
-    final maxV = niceCeil(values.fold(0, math.max));
+    // Skala minimal 50rb supaya label tidak jadi "1 / 0 / 0".
+    final maxV = niceCeil(math.max(values.fold(0, math.max), 50000));
     final area = size.width - _rightAxis;
     final slot = area / values.length;
     final bw = math.min(26.0, slot * 0.65);
@@ -149,7 +150,8 @@ class _WeekPainter extends CustomPainter {
       label.paint(canvas, Offset(cx - label.width / 2, base + 4));
     }
 
-    // Garis & angka hari terpilih.
+    // Garis & angka hari terpilih (tidak ada kalau seminggu kosong).
+    if (values.every((v) => v == 0)) return;
     final sx = chart.selected * slot + slot / 2;
     final sh = values[chart.selected] / maxV * (base - top);
     canvas.drawLine(

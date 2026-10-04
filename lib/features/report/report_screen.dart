@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -103,7 +105,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final peak = sorted.isEmpty ? 0 : sorted.last;
     final second = sorted.length < 2 ? peak : sorted[sorted.length - 2];
     final capped = second > 0 && peak > second * 2.5;
-    final cap = niceCeil(capped ? second : peak);
+    final cap = niceCeil(math.max(capped ? second : peak, 50000));
     final spentSum = daily.fold(0, (s, v) => s + v);
 
     final monthShort = monthYear(_month).split(' ').first;
@@ -111,7 +113,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       for (final i in [0, 7, 14, 21, days - 1]) i: '${i + 1} $monthShort',
     };
     if (isThisMonth) {
-      xLabels.removeWhere((i, _) => (i - (today.day - 1)).abs() < 4);
+      xLabels.removeWhere((i, _) => (i - (today.day - 1)).abs() < 6);
       xLabels[today.day - 1] = 'Hari ini';
     }
 
@@ -202,7 +204,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           DailyBarChart(
             values: [
               for (var i = 0; i < days; i++)
-                i < lastDay ? (daily[i] / cap).clamp(0.0, 1.0) : null,
+                i < lastDay && daily[i] > 0
+                    ? (daily[i] / cap).clamp(0.0, 1.0)
+                    : null,
             ],
             colors: List.filled(days, AppColors.ink),
             scaleLabels: [axisLabel(cap), axisLabel(cap ~/ 2), '0'],
