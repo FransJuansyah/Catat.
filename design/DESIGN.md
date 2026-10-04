@@ -11,7 +11,7 @@ Semua angka di dokumen ini diambil langsung dari skrip yang membangun desain Fig
 ## 1. Prinsip
 
 1. **Simpel, sedikit info per layar.** Satu angka besar + maksimal 3–4 blok. Jangan tambah info yang tidak ada di desain.
-2. **Aksi utama = Scan struk.** Selalu 1 tap dari mana saja (tombol tengah bottom nav + banner lime di Beranda).
+2. **Aksi utama = Catat pakai ketikan.** Selalu 1 tap dari mana saja (tombol tengah bottom nav **Catat (+)** + kotak "Catat apa hari ini?" di Beranda). Layar Catat punya 3 sumber: **Ketik** (utama) · Scan · Manual. *(Keputusan 4 Okt 2026, sebelumnya Scan struk.)*
 3. **Bahasa santai Gen Z**, tetap jelas: "Sisa duitmu bulan ini", "Pas-in struk di dalam kotak", "Hemat parah". Hindari istilah akuntansi.
 4. **3 kantong** = inti konsep. Warna kantong konsisten di semua layar (ikon, progress, titik kalender, chart).
 
@@ -105,7 +105,7 @@ Gaya **Lucide** (stroke 2, rounded). Flutter: package `lucide_icons_flutter` (at
 | **Tombol sekunder** | Bg putih, border `line`, teks `ink` |
 | **Tombol disabled** | Bg `#DADAD4`, teks `muted` |
 | **Top bar** | [tombol bulat 40 putih border `line` ikon back/x] — judul 17/700 tengah — [aksi 40 atau spacer 40] |
-| **Bottom nav** | 5 slot: Beranda · Catatan · **Scan (FAB 54 ink, ikon lime, label "Scan")** · Laporan · Akun. Aktif = `ink` + label ExtraBold; non-aktif = `faint` |
+| **Bottom nav** | 5 slot: Beranda · Catatan · **Catat (FAB 54 ink, ikon plus lime, label "Catat") → 60** · Laporan · Akun. Aktif = `ink` + label ExtraBold; non-aktif = `faint` |
 | **Segmented** | Bg `#E7E7E1` r14 p4; item aktif putih r10 teks 13/800 |
 | **Chip** | Pill; aktif = fill `ink`/warna kantong + teks putih; non-aktif = putih + border `line` |
 | **Toggle** | 48×28 r14; ON = track `ink` + knob lime 22; OFF = track `#DADAD4` + knob putih |
@@ -178,6 +178,18 @@ File PNG: `screens/NN-nama.png` (lihat [`screens/README.md`](screens/README.md))
 | 57 | Bikin PIN | Back, "Bikin PIN 6 angka", "Buat buka catat. Jangan pakai tanggal lahir ya.", 6 titik (terisi ink), keypad angka tanpa 000. Angka ke-6 → "Ulangi PIN" (layar sama), beda → getar + ulang | → 56 |
 | 58 | Terkunci | Bg ink, badge dompet lime, "Masukin PIN", "catat. dikunci biar datamu aman", 6 titik (terisi lime), keypad gelap, kiri bawah ikon sidik jari lime, "Lupa PIN?" → kode ke email akun → PIN direset → 57. 5x salah → tunggu 30 detik | Benar → layar terakhir |
 | 32 | Beranda (penghasilan tidak tetap) | Kartu "Saldo kamu sekarang" + "Masuk bulan ini", 2 kartu cepat Scan struk & Tambah pemasukan. **Tanpa** tombol "+ Pemasukan" di kartu saldo (dobel dengan kartu Tambah pemasukan; keputusan 26 Sep 2026, PNG lama masih menampilkannya) |
+
+### Catat pakai ketikan & grafik baterai (keputusan 4 Okt 2026)
+| # | Layar | Isi kunci |
+|---|---|---|
+| 59 | Beranda (ketik & baterai duit) | Menggantikan 03 untuk gaji & uang jajan. Kartu saldo ink + **baterai** (badan border `#3A3A40` r12 tinggi 34, isi lime = sisa ÷ total masuk periode, ujung 4×12), "45% dari Rp … masuk", "Cukup sampai gajian 25 Sep" / "Bisa kurang sebelum gajian", pill On track. **Kotak ketik** putih r22 shadow: badge lime sparkles + "Catat apa hari ini?" + "Ketik aja, misal: kopi susu 25rb" + tombol bulat ink panah lime → 60. Kartu **Pemakaian 7 hari** ala *Daily Usage* baterai: kalimat insight, 7 batang (abu `#DADAD4`, hari terpilih ink + angka besar 22/800 + tanggal + garis, hari ini lime), garis bantu putus-putus + label skala kanan. Lalu kantong. Penghasilan tidak tetap: kartu saldo 32 tanpa baterai, kotak ketik menggantikan 2 tombol cepat |
+| 60 | Catat · Ketik | Top bar X "Catat", segmen **Ketik · Scan · Manual** (Scan → 04, Manual → 11). Badge lime 64 sparkles, "Mau catat apa?", sub, label "Coba ketik kayak gini" + pil contoh (ketuk = isi kotak). Kotak ketik bawah: field + tombol bulat 44 (abu saat kosong, ink + panah lime saat ada teks) |
+| 61 | Catat · Terbaca | Gelembung kamu (ink, r20, sudut kanan bawah 6). Kartu "Kebaca N catatan" + pil tanggal: baris badge kantong + judul 15/800 + nama kantong 12/700 warna kantong + nominal (`-Rp` ink / `+Rp` hijau; uang masuk = badge hijau panah bawah, sub "Uang masuk"). 2 tile Keluar / Masuk. "Salah tebak? Ketuk catatannya buat ubah". Tombol **Simpan N catatan** → 10 (satu pengeluaran) / 31 (satu pemasukan) / Beranda + toast |
+| 62 | Catat · Nggak paham | Gelembung kamu + kartu `warnBg`: badge alert, "Hmm, aku nggak paham", "Aku cuma bisa bantu catat uang keluar & masuk. Tulis buat apa dan berapa, misal:" + 2 pil contoh. Tidak ada yang tercatat. Ada kata uang tapi tanpa nominal → judul "Berapa nominalnya?" |
+| 63 | Ubah catatan | Sheet di atas 61: segmen Uang keluar / Uang masuk, nominal besar, field judul + pil tanggal, "Masuk kantong" (chip, hanya uang keluar), Simpan, "Hapus dari daftar" merah |
+| 64 | Laporan (grafik) | Menggantikan 14. Kartu ink "Kepake bulan ini" + "dari X" + bar pemakaian per kantong + sisa (`#3A3A40`) + legenda. **Level saldo** ala grafik level baterai: batang per hari = saldo ÷ saldo tertinggi, hari ada uang masuk = batang hijau + latar `#E2F6EC` + ⚡, hari ini ink, label 100/50/0% kanan, tile pemasukan otomatis / uang masuk lain. **Keluar per hari** ala pemakaian data: batang ink tipis per tanggal, batang di atas skala dipotong + pil nilai. **Paling banyak makan duit**: 4 judul teratas (ikon, nominal, progress, "Nx catat", "% dari keluar"). Insight, Export |
+
+Pengenal ketikan bekerja **di HP tanpa internet** (`lib/domain/text_note_parser.dart`): nominal (25rb, 25.000, 6,5jt, ceban, dua puluh ribu), beberapa catatan sekaligus, kata hari (kemarin), uang masuk vs keluar (gajian, dapet, "Dimas bayar utang" = masuk, "bayar utang ke Rina" = keluar), tebak kantong dari jenisnya.
 
 ---
 
