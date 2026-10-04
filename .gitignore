@@ -57,3 +57,6 @@ dart_defines*.json
 key.properties
 google-services.json
 GoogleService-Info.plist
+
+# Foto struk untuk uji akurasi scan (unduh ulang: node tool/unduh_cord.js)
+/tool/struk_korpus/
