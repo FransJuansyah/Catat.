@@ -6,12 +6,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/month_picker.dart';
+import '../../core/widgets/controls.dart';
+import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/progress_track.dart';
+import '../../core/widgets/usage_charts.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../domain/report.dart';
+import '../../domain/usage_charts.dart';
 
-/// Layar 14 · Laporan (tab).
+/// Layar 64 · Laporan (tab): grafik ala pemakaian baterai & data.
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
 
@@ -77,29 +81,163 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   List<Widget> _body(MonthReport report, bool isThisMonth) {
     final data = report.data;
+    final today = ref.watch(clockProvider)();
+    final days = DateTime(_month.year, _month.month + 1, 0).day;
+    final lastDay = isThisMonth ? today.day : days;
+    final remaining = ref.watch(homeSummaryProvider).value?.remaining;
+
+    // Level saldo (ala grafik level baterai).
+    final levels = balanceLevels(
+      month: _month,
+      expenses: data.expenses,
+      incomes: data.incomes,
+      today: today,
+      endBalance: isThisMonth ? remaining : null,
+    );
+    final incomeIdx = {for (final d in levels.incomeDays) d - 1};
+
+    // Keluar per hari (ala pemakaian data). Batang yang jauh lebih tinggi
+    // dari lainnya dipotong supaya batang lain tetap kelihatan.
+    final daily = dailyTotals(data.expenses, _month, days);
+    final sorted = [...daily.where((v) => v > 0)]..sort();
+    final peak = sorted.isEmpty ? 0 : sorted.last;
+    final second = sorted.length < 2 ? peak : sorted[sorted.length - 2];
+    final capped = second > 0 && peak > second * 2.5;
+    final cap = niceCeil(capped ? second : peak);
+    final spentSum = daily.fold(0, (s, v) => s + v);
+
+    final monthShort = monthYear(_month).split(' ').first;
+    final xLabels = <int, String>{
+      for (final i in [0, 7, 14, 21, days - 1]) i: '${i + 1} $monthShort',
+    };
+    if (isThisMonth) {
+      xLabels.removeWhere((i, _) => (i - (today.day - 1)).abs() < 4);
+      xLabels[today.day - 1] = 'Hari ini';
+    }
+
+    final autoIncome = data.incomes
+        .where((i) => i.auto)
+        .fold(0, (s, i) => s + i.amount);
+    final otherIncome = data.totalIncome - autoIncome;
+    final top = topSpending(data.expenses);
+
     return [
-      _SummaryHero(
+      _UsageHero(
         data: data,
         title: isThisMonth
-            ? 'Total keluar bulan ini'
-            : 'Total keluar ${monthYearLong(_month)}',
+            ? 'Kepake bulan ini'
+            : 'Kepake ${monthYearLong(_month)}',
       ),
       const SizedBox(height: AppSpace.section),
-      Text(
-        'Per kantong',
-        style: AppText.style(17, AppText.w800, spacingPercent: -1),
-      ),
-      const SizedBox(height: 12),
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(AppRadius.cardLg),
+      _ChartCard(
+        title: 'Level saldo',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: const BoxDecoration(
+                color: AppColors.success,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.zap, size: 11, color: Colors.white),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'uang masuk',
+              style: AppText.style(12, AppText.w700, color: AppColors.muted),
+            ),
+          ],
         ),
-        child: Column(
-          children: [for (final p in data.pockets) _PocketRow(report: p)],
-        ),
+        children: [
+          DailyBarChart(
+            values: levels.levels,
+            colors: [
+              for (var i = 0; i < days; i++)
+                incomeIdx.contains(i)
+                    ? AppColors.success
+                    : (isThisMonth && i == lastDay - 1)
+                    ? AppColors.ink
+                    : const Color(0xFFC9C9C2),
+            ],
+            highlights: incomeIdx,
+            markers: incomeIdx,
+            scaleLabels: const ['100%', '50%', '0%'],
+            xLabels: xLabels,
+          ),
+          if (data.totalIncome > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (autoIncome > 0)
+                  Expanded(
+                    child: _MiniStat(
+                      label: data.incomeLabel,
+                      value: '+${rupiahShort(autoIncome)}',
+                    ),
+                  ),
+                if (otherIncome > 0)
+                  Expanded(
+                    child: _MiniStat(
+                      label: autoIncome > 0 ? 'Uang masuk lain' : 'Uang masuk',
+                      value: '+${rupiahShort(otherIncome)}',
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
       ),
+      const SizedBox(height: AppSpace.sectionTight),
+      _ChartCard(
+        title: 'Keluar per hari',
+        trailing: spentSum > 0
+            ? Text(
+                'Rata-rata ${rupiahShort((spentSum / lastDay).round())}',
+                style: AppText.style(12, AppText.w700, color: AppColors.muted),
+              )
+            : null,
+        children: [
+          DailyBarChart(
+            values: [
+              for (var i = 0; i < days; i++)
+                i < lastDay ? (daily[i] / cap).clamp(0.0, 1.0) : null,
+            ],
+            colors: List.filled(days, AppColors.ink),
+            scaleLabels: [axisLabel(cap), axisLabel(cap ~/ 2), '0'],
+            xLabels: xLabels,
+            pill: capped ? (daily.indexOf(peak), axisLabel(peak)) : null,
+          ),
+        ],
+      ),
+      if (top.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.section),
+        Text(
+          'Paling banyak makan duit',
+          style: AppText.style(17, AppText.w800, spacingPercent: -1),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.cardLg),
+          ),
+          child: Column(
+            children: [
+              for (final (i, g) in top.indexed) ...[
+                if (i > 0) const Divider(height: 1, color: AppColors.line),
+                _TopRow(
+                  group: g,
+                  ratio: g.total / top.first.total,
+                  share: spentSum <= 0 ? 0 : (g.total * 100 / spentSum).round(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
       if (report.insight case final insight?) ...[
         const SizedBox(height: 14),
         _InsightCard(insight: insight),
@@ -145,44 +283,63 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 }
 
-class _SummaryHero extends StatelessWidget {
-  const _SummaryHero({required this.data, required this.title});
+/// Kartu "Kepake bulan ini" + bar pemakaian per kantong (ala kuota data).
+class _UsageHero extends StatelessWidget {
+  const _UsageHero({required this.data, required this.title});
 
   final ReportData data;
   final String title;
 
+  static const _rest = 0xFF3A3A40;
+
   @override
   Widget build(BuildContext context) {
-    Widget tile(String label, String value, Color color) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-        decoration: BoxDecoration(
-          color: AppColors.darkSurface,
-          borderRadius: BorderRadius.circular(AppRadius.input),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: AppText.style(12, AppText.w500, color: AppColors.faint),
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: AppText.style(17, AppText.w800, color: color),
+    final used = [
+      for (final p in data.pockets)
+        if (p.spent > 0) p,
+    ]..sort((a, b) => b.spent.compareTo(a.spent));
+    final rest = data.remaining > 0 ? data.remaining : 0;
+    final parts = [
+      for (final p in used) (p.spent, p.pocket.color),
+      if (rest > 0) (rest, _rest),
+    ];
+    Widget legend(Color dot, String name, String value, {bool lime = false}) =>
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.style(
+                    13,
+                    AppText.w700,
+                    color: lime ? AppColors.lime : Colors.white,
+                  ),
+                ),
+              ),
+              Text(
+                value,
+                style: AppText.style(
+                  13,
+                  AppText.w700,
+                  color: lime ? AppColors.lime : AppColors.faint,
+                ),
+              ),
+            ],
+          ),
+        );
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.ink,
         borderRadius: BorderRadius.circular(AppRadius.hero),
@@ -194,88 +351,180 @@ class _SummaryHero extends StatelessWidget {
             title,
             style: AppText.style(14, AppText.w500, color: AppColors.faint),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              rupiah(data.totalSpent),
-              style: AppText.style(
-                36,
-                AppText.w800,
-                color: Colors.white,
-                spacingPercent: -3,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  rupiah(data.totalSpent),
+                  style: AppText.style(
+                    34,
+                    AppText.w800,
+                    color: Colors.white,
+                    spacingPercent: -3,
+                  ),
+                ),
+                if (data.totalIncome > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    'dari ${rupiahShort(data.totalIncome).replaceFirst('Rp ', '')}',
+                    style: AppText.style(
+                      14,
+                      AppText.w500,
+                      color: AppColors.faint,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              tile(
-                data.incomeLabel,
-                rupiahShort(data.totalIncome),
-                Colors.white,
-              ),
-              const SizedBox(width: 10),
-              tile(
-                'Sisa',
-                rupiahShort(data.remaining),
-                data.remaining < 0 ? const Color(0xFFFF8A80) : AppColors.lime,
-              ),
-            ],
-          ),
+          if (parts.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            SplitBar(parts: parts, height: 14, gap: 3),
+          ],
+          const SizedBox(height: 6),
+          for (final p in used)
+            legend(Color(p.pocket.color), p.pocket.name, rupiahShort(p.spent)),
+          if (data.totalIncome > 0)
+            legend(
+              const Color(0xFF55555C),
+              'Sisa',
+              rupiahShort(data.remaining),
+              lime: data.remaining >= 0,
+            ),
         ],
       ),
     );
   }
 }
 
-class _PocketRow extends StatelessWidget {
-  const _PocketRow({required this.report});
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({
+    required this.title,
+    required this.children,
+    this.trailing,
+  });
 
-  final PocketReport report;
+  final String title;
+  final Widget? trailing;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(report.pocket.color);
-    final budget = report.budget;
-    final ratio = budget <= 0
-        ? (report.spent > 0 ? 1.0 : 0.0)
-        : (report.spent / budget).clamp(0.0, 1.0);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.cardPad),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.cardLg),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                PocketVisuals.icon(report.pocket.iconKey),
-                size: 18,
-                color: color,
-              ),
-              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  report.pocket.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.style(15, AppText.w800),
-                ),
+                child: Text(title, style: AppText.style(15, AppText.w800)),
               ),
-              Text(
-                '${rupiahShort(report.spent)} / ${rupiahShort(budget).replaceFirst('Rp ', '')}',
-                style: AppText.style(
-                  13,
-                  AppText.w500,
-                  color: report.spent > budget && budget > 0
-                      ? AppColors.danger
-                      : AppColors.muted,
-                ),
-              ),
+              ?trailing,
             ],
           ),
-          const SizedBox(height: 10),
-          ProgressTrack(value: ratio, color: color),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppText.style(12, AppText.w500, color: AppColors.muted),
+        ),
+        Text(
+          value,
+          style: AppText.style(15, AppText.w800, color: AppColors.success),
+        ),
+      ],
+    );
+  }
+}
+
+/// Satu baris "Paling banyak makan duit" (ala daftar aplikasi boros kuota).
+class _TopRow extends StatelessWidget {
+  const _TopRow({
+    required this.group,
+    required this.ratio,
+    required this.share,
+  });
+
+  final SpendGroup group;
+  final double ratio;
+  final int share;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Color(group.pocket.color);
+    final small = AppText.style(12, AppText.w500, color: AppColors.muted);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          IconBadge(
+            icon: PocketVisuals.icon(group.iconKey),
+            background: PocketVisuals.soft(color),
+            color: color,
+            size: 40,
+            iconSize: 19,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        group.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.style(15, AppText.w800),
+                      ),
+                    ),
+                    Text(
+                      rupiah(group.total),
+                      style: AppText.style(14, AppText.w800),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ProgressTrack(value: ratio, color: color, height: 6),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('${group.count}x catat', style: small),
+                    ),
+                    Text('$share% dari keluar', style: small),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

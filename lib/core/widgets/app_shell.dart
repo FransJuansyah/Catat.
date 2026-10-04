@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/tokens.dart';
 
-/// Kerangka dengan bottom nav: Beranda · Catatan · [Scan] · Laporan · Akun.
+/// Kerangka dengan bottom nav: Beranda · Catatan · [Catat] · Laporan · Akun.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
 
@@ -23,7 +23,7 @@ class AppShell extends StatelessWidget {
           index: shell.currentIndex,
           onTab: (i) =>
               shell.goBranch(i, initialLocation: i == shell.currentIndex),
-          onScan: () => context.push('/scan'),
+          onCatat: () => context.push('/catat-ketik'),
         ),
       ),
     );
@@ -34,17 +34,17 @@ class _BottomNav extends StatelessWidget {
   const _BottomNav({
     required this.index,
     required this.onTab,
-    required this.onScan,
+    required this.onCatat,
   });
 
   final int index;
   final ValueChanged<int> onTab;
-  final VoidCallback onScan;
+  final VoidCallback onCatat;
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    // Desain: margin 24. HP 320dp tidak muat (4 tab + Scan = 278) → menyusut.
+    // Desain: margin 24. HP 320dp tidak muat (4 tab + Catat = 278) → menyusut.
     final side =
         ((MediaQuery.sizeOf(context).width - 4 * _Tab.width - AppSize.fab) / 2)
             .clamp(0.0, 24.0);
@@ -74,7 +74,7 @@ class _BottomNav extends StatelessWidget {
             active: index == 1,
             onTap: () => onTab(1),
           ),
-          _ScanButton(onTap: onScan),
+          _CatatButton(onTap: onCatat),
           _Tab(
             icon: LucideIcons.chartPie,
             label: 'Laporan',
@@ -136,8 +136,9 @@ class _Tab extends StatelessWidget {
   }
 }
 
-class _ScanButton extends StatelessWidget {
-  const _ScanButton({required this.onTap});
+/// Tombol tengah: buka Catat (ketik · scan · manual), layar 60.
+class _CatatButton extends StatelessWidget {
+  const _CatatButton({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -157,13 +158,13 @@ class _ScanButton extends StatelessWidget {
               boxShadow: AppShadow.fab,
             ),
             child: const Icon(
-              LucideIcons.scanLine,
-              size: 26,
+              LucideIcons.plus,
+              size: 28,
               color: AppColors.lime,
             ),
           ),
           const SizedBox(height: 4),
-          Text('Scan', style: AppText.style(11, AppText.w800)),
+          Text('Catat', style: AppText.style(11, AppText.w800)),
         ],
       ),
     );

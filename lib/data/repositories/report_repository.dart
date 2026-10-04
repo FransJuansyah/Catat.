@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../../domain/report.dart';
 import '../../domain/types.dart';
+import '../../domain/usage_charts.dart';
 import '../../domain/views.dart';
 import '../local/database.dart';
 
@@ -264,14 +265,33 @@ class ReportRepository {
     );
   }
 
-  Stream<MonthReport> watchMonth(DateTime month) {
-    final controller = StreamController<MonthReport>();
+  Stream<MonthReport> watchMonth(DateTime month) =>
+      _watch(() => loadMonth(month));
+
+  /// Pengeluaran 7 hari terakhir sampai hari ini (kartu Beranda, layar 59).
+  Future<WeekUsage> loadWeek() async {
+    final now = _now();
+    final start = DateTime(now.year, now.month, now.day - 6);
+    final data = await load(
+      ReportRange(
+        ReportSpan.month,
+        start,
+        DateTime(now.year, now.month, now.day + 1),
+      ),
+    );
+    return weekUsage(data.expenses, now);
+  }
+
+  Stream<WeekUsage> watchWeek() => _watch(loadWeek);
+
+  Stream<T> _watch<T>(Future<T> Function() load) {
+    final controller = StreamController<T>();
     StreamSubscription<void>? updates;
     var queue = Future<void>.value();
     void refresh() {
       queue = queue.then((_) async {
         try {
-          final value = await loadMonth(month);
+          final value = await load();
           if (!controller.isClosed) controller.add(value);
         } catch (e, st) {
           if (!controller.isClosed) controller.addError(e, st);

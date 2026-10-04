@@ -45,6 +45,7 @@ import 'features/pocket/pocket_edit_screen.dart';
 import 'features/pocket/pocket_settings_screen.dart';
 import 'features/pocket/transfer_screen.dart';
 import 'features/privacy/privacy_screen.dart';
+import 'features/quick/quick_note_screen.dart';
 import 'features/scan/scan_reading_screen.dart';
 import 'features/scan/scan_result_screen.dart';
 import 'features/report/export_done_screen.dart';
@@ -154,6 +155,8 @@ GoRouter createRouter({
       builder: (_, _) =>
           const ProGate(feature: ProFeature.scan, child: ScanScreen()),
     ),
+    // Layar 60: Catat pakai ketikan (tombol tengah bottom nav).
+    GoRoute(path: '/catat-ketik', builder: (_, _) => const QuickNoteScreen()),
     GoRoute(path: '/pro', builder: (_, _) => const ProScreen()),
     GoRoute(path: '/keamanan', builder: (_, _) => const SecurityScreen()),
     GoRoute(

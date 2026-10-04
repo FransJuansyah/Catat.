@@ -7,12 +7,14 @@ import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_card.dart';
+import '../../core/widgets/usage_charts.dart';
 import '../../data/providers.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/types.dart';
 import '../pocket/low_pocket_sheet.dart';
 
-/// Layar 03 · Beranda — design/screens/03 · Beranda.png
+/// Layar 59 · Beranda — design/screens/59 · Beranda (Ketik & Baterai Duit).png
+/// (penghasilan tidak tetap: kartu saldo layar 32).
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -89,10 +91,9 @@ class _HomeContent extends StatelessWidget {
         else
           _BalanceHero(summary: summary),
         const SizedBox(height: AppSpace.section),
-        if (irregular)
-          const _QuickActions()
-        else
-          _ScanBanner(onTap: () => context.push('/scan')),
+        _TypeBar(onTap: () => context.push('/catat-ketik')),
+        const SizedBox(height: AppSpace.section),
+        const _WeekCard(),
         const SizedBox(height: AppSpace.section),
         Row(
           children: [
@@ -178,16 +179,31 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Kartu saldo gaji & uang jajan (layar 03, 33).
-class _BalanceHero extends StatelessWidget {
+/// Kartu saldo gaji & uang jajan dengan baterai duit (layar 59, 33).
+class _BalanceHero extends ConsumerWidget {
   const _BalanceHero({required this.summary});
 
   final HomeSummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final onTrack = summary.onTrack;
     final allowance = summary.mode == IncomeMode.allowance;
+    final week = ref.watch(weekUsageProvider).value;
+    final percent = (summary.level * 100).round();
+    final days = summary.daysToPayday;
+    String? until;
+    if (week != null && days > 0) {
+      final today = ref.watch(clockProvider)();
+      final date = shortDate(
+        DateTime(today.year, today.month, today.day + days),
+      );
+      final noun = allowance ? 'uang jajan masuk' : 'gajian';
+      final enough = week.total / 7 * days <= summary.remaining;
+      until = enough
+          ? 'Cukup sampai $noun $date'
+          : 'Bisa kurang sebelum $noun $date';
+    }
     return _DarkCard(
       children: [
         Text(
@@ -199,18 +215,53 @@ class _BalanceHero extends StatelessWidget {
         const SizedBox(height: 4),
         _BigAmount(rupiah(summary.remaining)),
         const SizedBox(height: 14),
+        _Battery(level: summary.level),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: Text(
-                summary.opening != null
-                    ? 'dari saldo awal ${rupiah(summary.opening!)}'
-                    : allowance
-                    ? 'dari ${rupiah(summary.salary)} / ${summary.perNoun}'
-                    : 'dari gaji ${rupiah(summary.salary)}',
-                style: AppText.style(13, AppText.w500, color: AppColors.faint),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$percent%  ',
+                          style: AppText.style(
+                            15,
+                            AppText.w800,
+                            color: AppColors.lime,
+                          ),
+                        ),
+                        TextSpan(
+                          text: summary.opening != null
+                              ? 'dari saldo awal ${rupiah(summary.opening!)}'
+                              : 'dari ${rupiah(summary.available)} masuk',
+                        ),
+                      ],
+                    ),
+                    style: AppText.style(
+                      13,
+                      AppText.w500,
+                      color: AppColors.faint,
+                    ),
+                  ),
+                  if (until != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      until,
+                      style: AppText.style(
+                        13,
+                        AppText.w500,
+                        color: AppColors.faint,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
+            const SizedBox(width: 8),
             _Pill(
               icon: onTrack ? LucideIcons.check : LucideIcons.triangleAlert,
               label: onTrack ? 'On track' : 'Rem dulu',
@@ -278,98 +329,6 @@ class _RunningHero extends StatelessWidget {
           style: AppText.style(14, AppText.w800, color: AppColors.lime),
         ),
       ],
-    );
-  }
-}
-
-/// Dua tombol cepat: Scan struk & Tambah pemasukan (layar 32).
-class _QuickActions extends StatelessWidget {
-  const _QuickActions();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget tile({
-      required IconData icon,
-      required String title,
-      required String sub,
-      required Color bg,
-      required Color badgeBg,
-      required Color iconColor,
-      required Color titleColor,
-      required Color subColor,
-      required String route,
-    }) {
-      return Expanded(
-        child: Material(
-          color: bg,
-          borderRadius: BorderRadius.circular(AppRadius.cardLg),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => context.push(route),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.cardPad),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconBadge(
-                    icon: icon,
-                    background: badgeBg,
-                    color: iconColor,
-                    size: 40,
-                    iconSize: 20,
-                  ),
-                  const SizedBox(height: 10),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      style: AppText.style(15, AppText.w800, color: titleColor),
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: AppText.style(12, AppText.w500, color: subColor),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Tinggi kedua tile selalu sama walau teksnya beda panjang.
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          tile(
-            icon: LucideIcons.scanLine,
-            title: 'Scan struk',
-            sub: 'Catat pengeluaran',
-            bg: AppColors.lime,
-            badgeBg: AppColors.ink,
-            iconColor: AppColors.lime,
-            titleColor: AppColors.ink,
-            subColor: AppColors.limeText,
-            route: '/scan',
-          ),
-          const SizedBox(width: 10),
-          tile(
-            icon: LucideIcons.circlePlus,
-            title: 'Tambah pemasukan',
-            sub: 'Baru dapat duit?',
-            bg: AppColors.ink,
-            badgeBg: AppColors.darkSurface,
-            iconColor: AppColors.lime,
-            titleColor: Colors.white,
-            subColor: AppColors.faint,
-            route: '/pemasukan',
-          ),
-        ],
-      ),
     );
   }
 }
@@ -451,55 +410,195 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _ScanBanner extends StatelessWidget {
-  const _ScanBanner({required this.onTap});
+/// Baterai duit: isi lime = sisa ÷ jatah periode (layar 59).
+class _Battery extends StatelessWidget {
+  const _Battery({required this.level});
+
+  final double level;
+
+  static const _shell = Color(0xFF3A3A40);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 34,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _shell, width: 2),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: level <= 0 ? 0 : level.clamp(0.04, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: level < 0.2
+                        ? const Color(0xFFFF8A80)
+                        : AppColors.lime,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 3),
+        Container(
+          width: 4,
+          height: 12,
+          decoration: BoxDecoration(
+            color: _shell,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Kotak "Catat apa hari ini?" → layar 60 (aksi utama).
+class _TypeBar extends StatelessWidget {
+  const _TypeBar({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.lime,
-      borderRadius: BorderRadius.circular(AppRadius.cardLg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Row(
-            children: [
-              const IconBadge(
-                icon: LucideIcons.scanLine,
-                background: AppColors.ink,
-                color: AppColors.lime,
-                iconSize: 22,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Scan struk', style: AppText.style(16, AppText.w800)),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Foto aja, langsung kecatat',
-                      style: AppText.style(
-                        13,
-                        AppText.w500,
-                        color: AppColors.limeText,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.cardLg),
+        boxShadow: AppShadow.card,
+      ),
+      child: Material(
+        color: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.cardLg),
+          side: const BorderSide(color: AppColors.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            child: Row(
+              children: [
+                const IconBadge(
+                  icon: LucideIcons.sparkles,
+                  background: AppColors.lime,
+                  color: AppColors.ink,
+                  size: 40,
+                  iconSize: 19,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Catat apa hari ini?',
+                        style: AppText.style(15, AppText.w800),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'Ketik aja, misal: kopi susu 25rb',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.style(
+                          13,
+                          AppText.w500,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const IconBadge(
+                  icon: LucideIcons.arrowUp,
+                  background: AppColors.ink,
+                  color: AppColors.lime,
+                  size: 40,
+                  iconSize: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const _dayShort = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+/// Pemakaian 7 hari ala "Daily Usage" baterai (layar 59).
+class _WeekCard extends ConsumerStatefulWidget {
+  const _WeekCard();
+
+  @override
+  ConsumerState<_WeekCard> createState() => _WeekCardState();
+}
+
+class _WeekCardState extends ConsumerState<_WeekCard> {
+  int? _selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final week = ref.watch(weekUsageProvider).value;
+    if (week == null) return const SizedBox.shrink();
+    final selected = _selected ?? week.peakIndex;
+    final day = week.days[selected];
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.cardPad),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.cardLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Pemakaian 7 hari',
+                  style: AppText.style(15, AppText.w800),
                 ),
               ),
-              const Icon(
-                LucideIcons.chevronRight,
-                size: 20,
-                color: AppColors.ink,
+              GestureDetector(
+                onTap: () => context.go('/laporan'),
+                child: Text(
+                  'Lihat laporan',
+                  style: AppText.style(
+                    12,
+                    AppText.w700,
+                    color: AppColors.muted,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(week.insight(dayName), style: AppText.style(14, AppText.w700)),
+          const SizedBox(height: 12),
+          WeekBarChart(
+            values: week.totals,
+            labels: [
+              for (final (i, d) in week.days.indexed)
+                i == week.days.length - 1
+                    ? 'Hari ini'
+                    : _dayShort[d.weekday - 1],
+            ],
+            selected: selected,
+            valueLabel: rupiahShort(week.totals[selected]),
+            dateLabel: '${_dayShort[day.weekday - 1]}, ${shortDate(day)}',
+            onSelect: (i) => setState(() => _selected = i),
+          ),
+        ],
       ),
     );
   }

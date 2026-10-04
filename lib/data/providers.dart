@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/home_summary.dart';
+import '../domain/usage_charts.dart';
 import '../domain/income_schedule.dart';
 import '../domain/pocket_config.dart';
 import '../domain/pro.dart';
@@ -407,6 +408,11 @@ final monthReportProvider = StreamProvider.autoDispose
     .family<MonthReport, DateTime>(
       (ref, month) => ref.watch(reportRepositoryProvider).watchMonth(month),
     );
+
+/// Pemakaian 7 hari terakhir (Beranda, layar 59).
+final weekUsageProvider = StreamProvider.autoDispose<WeekUsage>(
+  (ref) => ref.watch(reportRepositoryProvider).watchWeek(),
+);
 
 /// Penyusun & penyimpan file laporan. Di-override di test.
 final reportExporterProvider = Provider<ReportExporter>(

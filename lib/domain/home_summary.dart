@@ -92,4 +92,11 @@ class HomeSummary {
   final int? opening;
 
   int get remaining => pockets.fold<int>(0, (s, p) => s + p.balance.remaining);
+
+  /// Total jatah periode ini (pemasukan + pindah saldo).
+  int get available => pockets.fold<int>(0, (s, p) => s + p.balance.available);
+
+  /// Isi "baterai" duit (layar 59): sisa ÷ jatah, 0..1.
+  double get level =>
+      available <= 0 ? 0 : (remaining / available).clamp(0.0, 1.0);
 }

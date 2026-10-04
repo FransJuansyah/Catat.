@@ -23,6 +23,23 @@ class ExpenseItemInput {
   final int qty;
 }
 
+/// Satu catatan dari ketikan (layar 61): uang keluar butuh [pocketId].
+class QuickNoteInput {
+  const QuickNoteInput.expense({
+    required String this.pocketId,
+    required this.amount,
+    required this.title,
+  }) : income = false;
+  const QuickNoteInput.income({required this.amount, required this.title})
+    : income = true,
+      pocketId = null;
+
+  final bool income;
+  final String? pocketId;
+  final int amount;
+  final String title;
+}
+
 /// Satu pintu akses data pemasukan, kantong, periode, dan pengeluaran.
 /// UI tidak boleh menyentuh [AppDatabase] langsung.
 ///
@@ -882,6 +899,32 @@ class BudgetRepository {
             );
       }
       return id;
+    });
+  }
+
+  /// Simpan beberapa catatan dari ketikan sekaligus (layar 61): semua
+  /// tersimpan atau tidak ada sama sekali. Mengembalikan id sesuai urutan.
+  Future<List<String>> addQuickNotes(
+    List<QuickNoteInput> notes, {
+    DateTime? occurredAt,
+  }) {
+    final when = occurredAt ?? _now();
+    return _db.transaction(() async {
+      return [
+        for (final n in notes)
+          n.income
+              ? await addIncome(
+                  amount: n.amount,
+                  title: n.title,
+                  occurredAt: when,
+                )
+              : await addExpense(
+                  pocketId: n.pocketId!,
+                  amount: n.amount,
+                  title: n.title,
+                  occurredAt: when,
+                ),
+      ];
     });
   }
 
