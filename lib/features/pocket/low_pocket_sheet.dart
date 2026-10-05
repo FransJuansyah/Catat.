@@ -14,6 +14,7 @@ Future<void> showLowPocketSheet(BuildContext context, PocketView pocket) {
   final color = Color(pocket.color);
   final b = pocket.balance;
   final pct = b.available <= 0 ? 0 : (b.remaining * 100 / b.available).round();
+  final minus = b.remaining < 0;
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: AppColors.card,
@@ -43,18 +44,25 @@ Future<void> showLowPocketSheet(BuildContext context, PocketView pocket) {
             ),
             const SizedBox(height: 16),
             Text(
-              'Kantong ${pocket.name}\ntinggal $pct%',
+              minus
+                  ? 'Kantong ${pocket.name}\nudah minus'
+                  : 'Kantong ${pocket.name}\ntinggal $pct%',
               textAlign: TextAlign.center,
               style: AppText.style(22, AppText.w800, spacingPercent: -2),
             ),
             const SizedBox(height: 8),
             Text(
-              'Sisa ${rupiahShort(b.remaining)} dari jatah ${rupiahShort(b.available)}. Mau diapain?',
+              minus
+                  ? 'Lewat ${rupiahShort(-b.remaining)} dari jatah ${rupiahShort(b.available)}. Mau diapain?'
+                  : 'Sisa ${rupiahShort(b.remaining)} dari jatah ${rupiahShort(b.available)}. Mau diapain?',
               textAlign: TextAlign.center,
               style: AppText.style(14, AppText.w500, color: AppColors.muted),
             ),
             const SizedBox(height: 16),
-            ProgressTrack(value: b.usedRatio, color: color),
+            ProgressTrack(
+              value: b.usedRatio,
+              color: minus ? AppColors.danger : color,
+            ),
             const SizedBox(height: 18),
             AppButton(
               label: 'Pindahin dari kantong lain',

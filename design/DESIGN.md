@@ -98,7 +98,7 @@ Gaya **Lucide** (stroke 2, rounded). Flutter: package `lucide_icons_flutter` (at
 | Komponen | Spesifikasi |
 |---|---|
 | **Badge ikon** | Lingkaran 36–44 (fill soft bg), ikon 46% ukuran, warna kantong |
-| **Kartu kantong** | Row: badge 44 + [nama 15/800 + "Sisa Rp 450rb" 13/700 muted, rata kanan] + progress 8px warna kantong di track `#F0F0EA`. Kartu putih r20 p14 |
+| **Kartu kantong** | Row: badge 44 + [nama 15/800 + "Sisa Rp 450rb" 13/700 muted, rata kanan] + progress 8px warna kantong di track `#F0F0EA`. Kartu putih r20 p14. **Minus** (dipakai melebihi jatah): "Minus Rp 450rb" + progress warna `danger`; detail kantong berjudul "Kantong minus" & nominal "-Rp 450.000"; peringatan (24) "Kantong X udah minus" · "Lewat Rp … dari jatah Rp …". Minus tidak dibawa ke periode gaji berikutnya |
 | **Kartu hero saldo** | Bg `ink` r28 p22: label 14 faint → angka 38/800 putih → baris "dari gaji …" + pill lime "On track" |
 | **Banner Scan** | Bg `lime` r22 p16/18: badge 44 `ink` ikon scan lime + "Scan struk" 16/800 + sub 13 `#4A5A12` + chevron |
 | **Tombol primer** | Bg `ink`, teks putih 16/700, r18, tinggi ±56 (pad 18), full width |

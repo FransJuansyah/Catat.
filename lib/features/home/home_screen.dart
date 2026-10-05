@@ -35,17 +35,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _paydayShown = true;
       context.push('/gajian-masuk');
     }, fireImmediately: true);
-    // Kantong baru saja turun di bawah ambang → peringatan (layar 24), sekali
-    // per kejadian. Muncul di atas Beranda setelah layar lain ditutup.
+    // Kantong baru saja turun di bawah ambang atau baru saja minus →
+    // peringatan (layar 24), sekali per kejadian. Muncul di atas Beranda
+    // setelah layar lain ditutup.
     ref.listenManual(homeSummaryProvider, (prev, next) {
       final before = prev?.value;
       final after = next.value;
       if (before == null || after == null || !mounted) return;
-      final known = {for (final p in before.pockets) p.id: p.isLow};
-      final newlyLow = after.pockets
-          .where((p) => p.isLow && known[p.id] == false)
-          .firstOrNull;
-      if (newlyLow != null) showLowPocketSheet(context, newlyLow);
+      final known = {for (final p in before.pockets) p.id: p};
+      final warn = after.pockets.where((p) {
+        final old = known[p.id];
+        if (old == null) return false;
+        final nowMinus = p.balance.remaining < 0;
+        final wasMinus = old.balance.remaining < 0;
+        return (p.isLow && !old.isLow) || (nowMinus && !wasMinus);
+      }).firstOrNull;
+      if (warn != null) showLowPocketSheet(context, warn);
     });
   }
 

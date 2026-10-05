@@ -150,7 +150,7 @@ class _Hero extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Sisa di kantong',
+                b.remaining < 0 ? 'Kantong minus' : 'Sisa di kantong',
                 style: AppText.style(14, AppText.w700, color: light),
               ),
             ],

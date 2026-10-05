@@ -5,6 +5,7 @@ void main() {
   test('rupiah penuh pakai titik ribuan', () {
     expect(rupiah(2180000), 'Rp 2.180.000');
     expect(rupiah(0), 'Rp 0');
+    expect(rupiah(-450000), '-Rp 450.000');
     expect(rupiahOut(52000), '-Rp 52.000');
   });
 

@@ -2,8 +2,9 @@ import 'package:intl/intl.dart';
 
 final _ribuan = NumberFormat.decimalPattern('id_ID');
 
-/// 2180000 -> "Rp 2.180.000"
-String rupiah(int value) => 'Rp ${_ribuan.format(value)}';
+/// 2180000 -> "Rp 2.180.000" · minus: -450000 -> "-Rp 450.000"
+String rupiah(int value) =>
+    value < 0 ? '-Rp ${_ribuan.format(-value)}' : 'Rp ${_ribuan.format(value)}';
 
 /// Pengeluaran: 52000 -> "-Rp 52.000"
 String rupiahOut(int value) => '-${rupiah(value)}';

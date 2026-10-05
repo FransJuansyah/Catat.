@@ -18,9 +18,18 @@ class PocketCard extends StatelessWidget {
     final color = Color(pocket.color);
     final balance = pocket.balance;
     final untouched = balance.spent == 0;
-    final status = untouched
+    // Dipakai melebihi jatah: tulisan & bar merah, bukan "Sisa -Rp …".
+    final minus = balance.remaining < 0;
+    final status = minus
+        ? 'Minus ${rupiahShort(-balance.remaining)}'
+        : untouched
         ? 'Aman, ${rupiahShort(balance.remaining)}'
         : 'Sisa ${rupiahShort(balance.remaining)}';
+    final statusColor = minus
+        ? AppColors.danger
+        : untouched
+        ? color
+        : AppColors.muted;
 
     return Material(
       color: AppColors.card,
@@ -56,13 +65,16 @@ class PocketCard extends StatelessWidget {
                           style: AppText.style(
                             13,
                             AppText.w700,
-                            color: untouched ? color : AppColors.muted,
+                            color: statusColor,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    ProgressTrack(value: balance.usedRatio, color: color),
+                    ProgressTrack(
+                      value: balance.usedRatio,
+                      color: minus ? AppColors.danger : color,
+                    ),
                   ],
                 ),
               ),
