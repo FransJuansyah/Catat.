@@ -111,11 +111,15 @@ Deno.serve(async (req) => {
     : new Date().toISOString().slice(0, 10);
 
   // 2. Batas harian per akun (kuota Groq gratis dipakai bersama semua user).
-  const { data: used, error: usageError } = await admin.rpc('bump_chat_usage', {
-    p_user: user.id,
-  });
-  if (usageError) return json(500, { error: 'usage' });
-  if ((used as number) > DAILY_LIMIT) {
+  //    Tabel chat_usage belum dibuat (migrasi belum jalan) → tetap dilayani
+  //    tanpa batas, supaya fungsi bisa dipakai sebelum migrasi diterapkan.
+  const { data: usedRaw, error: usageError } = await admin.rpc(
+    'bump_chat_usage',
+    { p_user: user.id },
+  );
+  if (usageError) console.warn('chat_usage belum aktif:', usageError.message);
+  const used = usageError ? 0 : (usedRaw as number);
+  if (used > DAILY_LIMIT) {
     return json(429, { error: 'limit', limit: DAILY_LIMIT });
   }
 
@@ -181,6 +185,6 @@ Deno.serve(async (req) => {
     action,
     reply: String(reply.reply ?? '').slice(0, 200),
     notes: action === 'catat' ? notes : [],
-    remaining: Math.max(0, DAILY_LIMIT - (used as number)),
+    remaining: Math.max(0, DAILY_LIMIT - used),
   });
 });
