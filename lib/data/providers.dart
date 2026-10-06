@@ -473,8 +473,11 @@ enum LoginStart {
   /// Akun sudah ada isinya, HP kosong → tarik data akun.
   restore,
 
-  /// Dua-duanya ada isinya → tanya dulu (data HP diganti data akun).
+  /// Dua-duanya ada isinya → tanya dulu: data akun atau data HP.
   conflict,
+
+  /// Dua-duanya ada isinya, user pilih data HP ini (isi akun ditimpa).
+  keepLocal,
 }
 
 class AccountState {
@@ -578,6 +581,8 @@ class AccountController extends Notifier<AccountState> {
   Future<void> finishLogin(LoginStart start) async {
     if (start == LoginStart.upload) {
       await _engine.enqueueAll();
+    } else if (start == LoginStart.keepLocal) {
+      await _engine.replaceRemoteWithLocal();
     } else {
       await _engine.wipeLocal();
     }

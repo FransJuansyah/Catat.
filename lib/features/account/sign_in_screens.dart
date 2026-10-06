@@ -10,7 +10,6 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/amount_keypad.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
-import '../../core/widgets/confirm_sheet.dart';
 import '../../data/providers.dart';
 
 final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -318,19 +317,13 @@ class _SignInCodeScreenState extends ConsumerState<SignInCodeScreen> {
       var start = await check();
       if (!mounted) return;
       if (start == LoginStart.conflict) {
-        final replace = await showConfirmSheet(
-          context,
-          title: 'Akun ini udah ada isinya',
-          message: 'Catatan di HP ini diganti sama data di akun. Yang di akun tetap aman.',
-          confirmLabel: 'Pakai data akun',
-          danger: true,
-        );
-        if (!replace) {
+        final choice = await _chooseData(context);
+        if (choice == null) {
           await account.cancelLogin();
           if (mounted) context.pop();
           return;
         }
-        start = LoginStart.restore;
+        start = choice;
       }
       await account.finishLogin(start);
       if (!mounted) return;
@@ -497,3 +490,63 @@ class _SignInCodeScreenState extends ConsumerState<SignInCodeScreen> {
     );
   }
 }
+
+/// Akun & HP sama-sama berisi: pakai data yang mana. null = batal.
+Future<LoginStart?> _chooseData(BuildContext context) =>
+    showModalBottomSheet<LoginStart>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.hero),
+        ),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.disabledBg,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Akun ini udah ada isinya',
+                textAlign: TextAlign.center,
+                style: AppText.style(20, AppText.w800, spacingPercent: -2),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pilih data yang mau dipakai. Data yang nggak dipilih bakal '
+                'diganti.',
+                textAlign: TextAlign.center,
+                style: AppText.style(14, AppText.w500, color: AppColors.muted),
+              ),
+              const SizedBox(height: 20),
+              AppButton(
+                label: 'Pakai data HP ini',
+                onPressed: () => Navigator.pop(sheet, LoginStart.keepLocal),
+              ),
+              const SizedBox(height: 10),
+              AppButton(
+                label: 'Pakai data akun',
+                style: AppButtonStyle.danger,
+                onPressed: () => Navigator.pop(sheet, LoginStart.restore),
+              ),
+              const SizedBox(height: 10),
+              AppButton(
+                label: 'Batal',
+                style: AppButtonStyle.secondary,
+                onPressed: () => Navigator.pop(sheet),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );

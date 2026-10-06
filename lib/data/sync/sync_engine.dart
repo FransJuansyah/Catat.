@@ -132,6 +132,47 @@ class SyncEngine {
     });
   }
 
+  /// Masuk ke akun yang sudah berisi tapi data HP ini yang dipakai: baris
+  /// akun yang tidak ada di HP ditandai terhapus (lebih baru → menang), lalu
+  /// semua data HP dikirim. Data lama di akun hilang.
+  Future<void> replaceRemoteWithLocal() async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final local = <String, Set<String>>{
+      for (final t in syncedTables)
+        t: {
+          for (final r in await _db.customSelect('SELECT id FROM $t').get())
+            r.read<String>('id'),
+        },
+    };
+    final stale = <RemoteRow>[];
+    var rev = 0;
+    while (true) {
+      final rows = await _remote.pull(rev);
+      if (rows.isEmpty) break;
+      for (final r in rows) {
+        if (r.deleted || !syncedTables.contains(r.table)) continue;
+        if (local[r.table]!.contains(r.id)) continue;
+        stale.add(
+          RemoteRow(
+            table: r.table,
+            id: r.id,
+            data: null,
+            changedAt: now,
+            deleted: true,
+          ),
+        );
+      }
+      rev = rows.map((r) => r.rev).reduce((a, b) => a > b ? a : b);
+    }
+    for (var i = 0; i < stale.length; i += _pushBatch) {
+      await _remote.push(
+        stale.sublist(i, (i + _pushBatch).clamp(0, stale.length)),
+      );
+    }
+    await enqueueAll();
+    await push();
+  }
+
   // ------------------------------------------------------------------ pull
 
   Future<int> pull() async {

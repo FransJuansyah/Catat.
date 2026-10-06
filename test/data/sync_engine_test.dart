@@ -89,6 +89,42 @@ void main() {
     template: PocketTemplates.klasik,
   );
 
+  test('akun sudah berisi, pilih data HP ini: isi akun ditimpa', () async {
+    // Akun berisi data lama dari HP lain (a).
+    await setupA();
+    final [wa, _, _] = (await a.repo.loadPocketSetup()).pockets;
+    await a.repo.addExpense(pocketId: wa.id, amount: 999000, title: 'Lama');
+    await a.sync.sync();
+
+    // HP ini (b) punya data sendiri: gaji 5 jt, satu pengeluaran.
+    await b.repo.setupBudget(
+      netSalary: 5000000,
+      payday: 5,
+      template: PocketTemplates.klasik,
+    );
+    final [wb, _, _] = (await b.repo.loadPocketSetup()).pockets;
+    await b.repo.addExpense(pocketId: wb.id, amount: 25000, title: 'Kopi');
+    final before = await b.repo.loadHome();
+
+    await b.sync.replaceRemoteWithLocal();
+    await b.sync.sync();
+
+    // Data HP ini tidak berubah.
+    final after = await b.repo.loadHome();
+    expect(after.remaining, before.remaining);
+    expect(after.salary, 5000000);
+    expect(after.pockets, hasLength(3));
+
+    // HP ketiga yang masuk akun yang sama melihat data HP ini, bukan data lama.
+    final c = Device(remote, () => now);
+    addTearDown(c.db.close);
+    await c.sync.sync();
+    final homeC = await c.repo.loadHome();
+    expect(homeC.salary, 5000000);
+    expect(homeC.remaining, before.remaining);
+    expect(homeC.pockets, hasLength(3));
+  });
+
   test('perubahan lokal otomatis masuk antrian (trigger)', () async {
     expect(await a.sync.pendingCount(), 0);
     await setupA();
