@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -266,7 +268,9 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                         ),
             ),
         ];
-        _log.add(_BotMsg(reply.reply));
+        // Kalimat tetap: catatan baru tersimpan setelah user ketuk Simpan,
+        // jangan sampai AI bilang "sudah masuk".
+        _log.add(const _BotMsg('Siap, cek dulu ya. Udah pas? Ketuk Simpan.'));
     }
   }
 
@@ -445,10 +449,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                         const SizedBox(height: 12),
                       ],
                       if (_thinking) ...[
-                        const _BotBubble(
-                          message: _BotMsg('Bentar, lagi kubaca…'),
-                          muted: true,
-                        ),
+                        const _BotBubble(message: _BotMsg(''), typing: true),
                         const SizedBox(height: 12),
                       ],
                       if (read) ..._readBody(),
@@ -987,12 +988,12 @@ class _NotUnderstood extends StatelessWidget {
 /// Gelembung bot (layar 65–66): avatar lime di kiri, latar putih; kuning untuk
 /// peringatan (offline, ditolak, jatah habis).
 class _BotBubble extends StatelessWidget {
-  const _BotBubble({required this.message, this.muted = false});
+  const _BotBubble({required this.message, this.typing = false});
 
   final _BotMsg message;
 
-  /// "Bentar, lagi kubaca…" saat menunggu AI.
-  final bool muted;
+  /// Titik-titik "lagi ngetik" saat menunggu AI.
+  final bool typing;
 
   @override
   Widget build(BuildContext context) {
@@ -1029,14 +1030,13 @@ class _BotBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.text,
-                    style: AppText.style(
-                      15,
-                      AppText.w500,
-                      color: muted ? AppColors.muted : fg,
+                  if (typing)
+                    const _TypingDots()
+                  else
+                    Text(
+                      message.text,
+                      style: AppText.style(15, AppText.w500, color: fg),
                     ),
-                  ),
                   if (message.action != null) ...[
                     const SizedBox(height: 10),
                     GestureDetector(
@@ -1066,6 +1066,64 @@ class _BotBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Tiga titik yang naik bergantian, seolah bot lagi ngetik.
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 22,
+      child: AnimatedBuilder(
+        animation: _anim,
+        builder: (context, _) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 5),
+              _dot(i),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Titik ke-[i] naik di sepertiga putarannya sendiri, lalu turun lagi.
+  Widget _dot(int i) {
+    final t = (_anim.value - i * 0.18) % 1.0;
+    final lift = t < 0.36 ? math.sin(t / 0.36 * math.pi) : 0.0;
+    return Transform.translate(
+      offset: Offset(0, -5 * lift),
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          color: Color.lerp(AppColors.muted, AppColors.ink, lift),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

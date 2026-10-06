@@ -149,6 +149,10 @@ void main() {
     expect(find.text('Kopi'), findsOneWidget);
     expect(find.text('Keinginan'), findsWidgets);
     expect(find.text('Simpan 1 catatan'), findsOneWidget);
+    expect(
+      find.text('Siap, cek dulu ya. Udah pas? Ketuk Simpan.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('tanpa internet: penjelasan singkat + tombol Manual', (
