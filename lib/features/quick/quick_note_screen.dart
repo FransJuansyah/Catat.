@@ -11,13 +11,19 @@ import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_chip.dart';
+import '../../data/chat_assistant.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/budget_repository.dart';
+import '../../domain/chat_reply.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
+import '../../domain/receipt_parser.dart';
 import '../../domain/text_note_parser.dart';
+import '../../domain/types.dart';
 
-/// Layar 60–63 · Catat pakai ketikan. Tab Scan & Manual membuka layar 04 / 11.
+/// Layar 60–67 · Catat pakai ketikan. Kalimat jelas dibaca di HP (gratis,
+/// offline); kalau tidak jelas, chat AI (catat. Pro, butuh internet) bertanya
+/// balik. Tab Scan & Manual membuka layar 04 / 11.
 class QuickNoteScreen extends ConsumerStatefulWidget {
   const QuickNoteScreen({super.key});
 
@@ -48,62 +54,220 @@ class _Draft {
   String? pocketId;
 }
 
+/// Isi percakapan, urut tampil.
+sealed class _Item {
+  const _Item();
+}
+
+class _UserMsg extends _Item {
+  const _UserMsg(this.text);
+  final String text;
+}
+
+class _BotMsg extends _Item {
+  const _BotMsg(
+    this.text, {
+    this.warn = false,
+    this.icon,
+    this.action,
+    this.onAction,
+  });
+  final String text;
+  final IconData? icon;
+
+  /// Peringatan (offline, ditolak, jatah habis): latar kuning.
+  final bool warn;
+  final String? action;
+  final VoidCallback? onAction;
+}
+
+/// Pengenal di HP tidak paham & chat AI tidak dipakai (bukan Pro).
+class _LocalFail extends _Item {
+  const _LocalFail({required this.needsAmount});
+  final bool needsAmount;
+}
+
 class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   final _input = TextEditingController();
   final _focus = FocusNode();
-  String? _sent;
-  TextNoteResult? _result;
+  final _scroll = ScrollController();
+  final _log = <_Item>[];
+
+  /// Obrolan dengan AI yang sedang berjalan (bot sedang bertanya balik).
+  final _aiTurns = <ChatTurn>[];
   List<_Draft> _drafts = [];
   int _daysAgo = 0;
   bool _saving = false;
+  bool _thinking = false;
+  bool? _online;
 
   @override
   void initState() {
     super.initState();
     _input.addListener(() => setState(() {}));
+    ref.read(chatAssistantProvider).isOnline().then((online) {
+      if (mounted) setState(() => _online = online);
+    });
   }
 
   @override
   void dispose() {
     _input.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   List<PocketView> get _pockets =>
       ref.read(homeSummaryProvider).value?.pockets ?? const [];
 
-  void _send() {
-    final text = _input.text.trim();
-    if (text.isEmpty) return;
-    final result = parseTextNote(text);
+  bool get _pro => ref.read(proStatusProvider).value?.unlocked ?? false;
+
+  String? _pocketIdFor(PocketType type) {
     final pockets = _pockets;
+    return (pockets.where((p) => p.type == type).firstOrNull ??
+            pockets.firstOrNull)
+        ?.id;
+  }
+
+  void _scrollDown() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  });
+
+  Future<void> _send() async {
+    final text = _input.text.trim();
+    if (text.isEmpty || _thinking) return;
+    _input.clear();
     setState(() {
-      _sent = text;
-      _result = result;
+      _log.add(_UserMsg(text));
       _drafts = [];
-      _daysAgo = 0;
-      if (result is TextNotesRead) {
-        _daysAgo = result.daysAgo;
-        _drafts = [
-          for (final n in result.notes)
-            _Draft(
-              income: n.isIncome,
-              amount: n.amount,
-              title: n.title,
-              pocketId:
-                  (pockets.where((p) => p.type == n.pocketType).firstOrNull ??
-                          pockets.firstOrNull)
-                      ?.id,
+    });
+    _scrollDown();
+
+    // 1. Kalimat jelas dibaca di HP dulu (gratis, jalan tanpa internet).
+    //    Kalau bot sedang bertanya balik, jawabannya dikirim ke AI supaya
+    //    nyambung dengan pertanyaan tadi.
+    if (_aiTurns.isEmpty) {
+      final local = parseTextNote(text);
+      if (local is TextNotesRead) {
+        setState(() {
+          _daysAgo = local.daysAgo;
+          _drafts = [
+            for (final n in local.notes)
+              _Draft(
+                income: n.isIncome,
+                amount: n.amount,
+                title: n.title,
+                pocketId: _pocketIdFor(n.pocketType),
+              ),
+          ];
+        });
+        _focus.unfocus();
+        _scrollDown();
+        return;
+      }
+      if (!_pro) {
+        HapticFeedback.lightImpact();
+        setState(
+          () => _log.add(_LocalFail(needsAmount: local is TextNoteNeedsAmount)),
+        );
+        _scrollDown();
+        return;
+      }
+    }
+
+    // 2. Chat AI (catat. Pro): bertanya balik / mencatat / menolak.
+    final turns = [..._aiTurns, ChatTurn.user(text)];
+    setState(() => _thinking = true);
+    _scrollDown();
+    final outcome = await ref
+        .read(chatAssistantProvider)
+        .send(
+          turns: turns,
+          pockets: _pockets,
+          today: dateOnly(ref.read(clockProvider)()),
+        );
+    if (!mounted) return;
+    setState(() {
+      _thinking = false;
+      _aiTurns.clear();
+      switch (outcome) {
+        case ChatAnswered(:final reply):
+          _onReply(reply, turns);
+        case ChatOffline():
+          _online = false;
+          _log.add(
+            _BotMsg(
+              'Nggak ada koneksi. Chat AI butuh internet buat nanya balik. '
+              'Tulis lengkap aja, misal "kopi 25rb", atau pakai Manual.',
+              warn: true,
+              icon: LucideIcons.wifiOff,
+              action: 'Pakai Manual',
+              onAction: () => context.pushReplacement('/catat'),
             ),
-        ];
+          );
+        case ChatNeedsLogin():
+          _log.add(
+            _BotMsg(
+              'Chat AI butuh akun biar jatah hariannya kecatat. Masuk dulu ya.',
+              warn: true,
+              action: 'Masuk akun',
+              onAction: () => context.push('/masuk-email'),
+            ),
+          );
+        case ChatLimit(:final limit):
+          _log.add(
+            _BotMsg(
+              'Jatah chat AI hari ini udah habis ($limit pesan). Besok bisa '
+              'lagi. Sementara tulis lengkap aja, misal "kopi 25rb".',
+              warn: true,
+            ),
+          );
+        case ChatFailed():
+          _log.add(
+            const _BotMsg(
+              'Chat AI lagi gangguan. Coba lagi bentar, atau tulis lengkap '
+              'kayak "kopi 25rb".',
+              warn: true,
+            ),
+          );
       }
     });
-    _input.clear();
-    if (result is TextNotesRead) {
-      _focus.unfocus();
-    } else {
-      HapticFeedback.lightImpact();
+    if (_drafts.isNotEmpty) _focus.unfocus();
+    _scrollDown();
+  }
+
+  void _onReply(AssistantReply reply, List<ChatTurn> turns) {
+    switch (reply.action) {
+      case ChatAction.tanya:
+        _aiTurns.addAll([...turns, ChatTurn.bot(reply.reply)]);
+        _log.add(_BotMsg(reply.reply));
+      case ChatAction.tolak:
+        _log.add(_BotMsg(reply.reply, warn: true));
+      case ChatAction.catat:
+        final byName = {for (final p in _pockets) p.name: p.id};
+        _daysAgo = reply.notes.first.daysAgo;
+        _drafts = [
+          for (final n in reply.notes)
+            _Draft(
+              income: n.income,
+              amount: n.amount,
+              title: n.title,
+              pocketId: n.income
+                  ? null
+                  : byName[n.pocketName] ??
+                        _pocketIdFor(
+                          guessPocketType(ReceiptData(text: n.title)),
+                        ),
+            ),
+        ];
+        _log.add(_BotMsg(reply.reply));
     }
   }
 
@@ -113,19 +277,21 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     _send();
   }
 
-  /// Ketuk gelembung = ketik ulang kalimat tadi.
-  void _retype() {
-    final text = _sent;
-    if (text == null) return;
+  /// Mulai lagi; [text] (kalimat terakhir) dikembalikan ke kotak ketik.
+  void _restart([String? text]) {
     setState(() {
-      _sent = null;
-      _result = null;
+      _log.clear();
+      _aiTurns.clear();
       _drafts = [];
     });
-    _input.text = text;
-    _input.selection = TextSelection.collapsed(offset: text.length);
-    _focus.requestFocus();
+    if (text != null) {
+      _input.text = text;
+      _input.selection = TextSelection.collapsed(offset: text.length);
+      _focus.requestFocus();
+    }
   }
+
+  String? get _lastUserText => _log.whereType<_UserMsg>().lastOrNull?.text;
 
   DateTime get _today => dateOnly(ref.read(clockProvider)());
 
@@ -213,7 +379,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
         _drafts[index] = updated;
       }
     });
-    if (_drafts.isEmpty) _retype();
+    if (_drafts.isEmpty) _restart(_lastUserText);
   }
 
   String get _dateLabel => switch (_daysAgo) {
@@ -224,9 +390,10 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Muat kantong lebih awal supaya tebakan kantong langsung ada.
+    // Muat kantong & status Pro lebih awal.
     ref.watch(homeSummaryProvider);
-    final read = _result is TextNotesRead && _drafts.isNotEmpty;
+    final pro = ref.watch(proStatusProvider).value?.unlocked ?? false;
+    final read = _drafts.isNotEmpty;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -248,23 +415,44 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                   if (v == 2) context.pushReplacement('/catat');
                 },
               ),
+              if (pro && _online == false) ...[
+                const SizedBox(height: 12),
+                const _OfflineBanner(),
+              ],
               const SizedBox(height: 16),
               Expanded(
                 child: ListView(
+                  controller: _scroll,
                   padding: EdgeInsets.zero,
                   children: [
-                    if (_sent == null)
+                    if (_log.isEmpty && !read)
                       ..._empty()
                     else ...[
-                      _UserBubble(text: _sent!, onTap: _retype),
-                      const SizedBox(height: 14),
-                      if (read)
-                        ..._readBody()
-                      else
-                        _NotUnderstood(
-                          needsAmount: _result is TextNoteNeedsAmount,
-                          onExample: _useExample,
+                      for (final item in _log) ...[
+                        switch (item) {
+                          _UserMsg(:final text) => _UserBubble(
+                            text: text,
+                            onTap: read || _thinking
+                                ? null
+                                : () => _restart(text),
+                          ),
+                          _BotMsg() => _BotBubble(message: item),
+                          _LocalFail(:final needsAmount) => _NotUnderstood(
+                            needsAmount: needsAmount,
+                            onExample: _useExample,
+                            onPro: () => context.push('/pro'),
+                          ),
+                        },
+                        const SizedBox(height: 12),
+                      ],
+                      if (_thinking) ...[
+                        const _BotBubble(
+                          message: _BotMsg('Bentar, lagi kubaca…'),
+                          muted: true,
                         ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (read) ..._readBody(),
                     ],
                   ],
                 ),
@@ -278,7 +466,12 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                   onPressed: _save,
                 )
               else
-                _InputBar(controller: _input, focus: _focus, onSend: _send),
+                _InputBar(
+                  controller: _input,
+                  focus: _focus,
+                  onSend: _send,
+                  hint: _aiTurns.isNotEmpty ? 'Jawab di sini…' : null,
+                ),
             ],
           ),
         ),
@@ -404,10 +597,10 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
 }
 
 class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.text, required this.onTap});
+  const _UserBubble({required this.text, this.onTap});
 
   final String text;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -478,11 +671,13 @@ class _InputBar extends StatelessWidget {
     required this.controller,
     required this.focus,
     required this.onSend,
+    this.hint,
   });
 
   final TextEditingController controller;
   final FocusNode focus;
   final VoidCallback onSend;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -514,7 +709,7 @@ class _InputBar extends StatelessWidget {
                 isCollapsed: true,
                 counterText: '',
                 border: InputBorder.none,
-                hintText: 'Ketik catatan…',
+                hintText: hint ?? 'Ketik catatan…',
                 hintStyle: AppText.style(
                   15,
                   AppText.w500,
@@ -685,10 +880,17 @@ class _TotalTile extends StatelessWidget {
 
 /// Layar 62: bukan catatan uang / nominal tidak ada.
 class _NotUnderstood extends StatelessWidget {
-  const _NotUnderstood({required this.needsAmount, required this.onExample});
+  const _NotUnderstood({
+    required this.needsAmount,
+    required this.onExample,
+    this.onPro,
+  });
 
   final bool needsAmount;
   final ValueChanged<String> onExample;
+
+  /// Bukan Pro: ajak buka Pro supaya chat AI bisa bertanya balik (layar 67).
+  final VoidCallback? onPro;
 
   @override
   Widget build(BuildContext context) {
@@ -736,6 +938,179 @@ class _NotUnderstood extends StatelessWidget {
             _ExampleChip(text: e, onTap: () => onExample(e)),
             const SizedBox(height: 8),
           ],
+          if (onPro != null) ...[
+            const SizedBox(height: 4),
+            Material(
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onPro,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const IconBadge(
+                        icon: LucideIcons.sparkles,
+                        background: AppColors.lime,
+                        color: AppColors.ink,
+                        size: 32,
+                        iconSize: 16,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Mau dibantu tanya balik kayak ngobrol? Buka catat. Pro',
+                          style: AppText.style(
+                            13,
+                            AppText.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 18,
+                        color: AppColors.lime,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Gelembung bot (layar 65–66): avatar lime di kiri, latar putih; kuning untuk
+/// peringatan (offline, ditolak, jatah habis).
+class _BotBubble extends StatelessWidget {
+  const _BotBubble({required this.message, this.muted = false});
+
+  final _BotMsg message;
+
+  /// "Bentar, lagi kubaca…" saat menunggu AI.
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final warn = message.warn;
+    final fg = warn ? AppColors.warnText : AppColors.ink;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconBadge(
+            icon:
+                message.icon ??
+                (warn ? LucideIcons.triangleAlert : LucideIcons.sparkles),
+            background: warn ? const Color(0xFFFDECB5) : AppColors.lime,
+            color: warn ? AppColors.warnIcon : AppColors.ink,
+            size: 28,
+            iconSize: 14,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 282),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: warn ? AppColors.warnBg : AppColors.card,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: AppText.style(
+                      15,
+                      AppText.w500,
+                      color: muted ? AppColors.muted : fg,
+                    ),
+                  ),
+                  if (message.action != null) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: message.onAction,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.ink,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Text(
+                          message.action!,
+                          style: AppText.style(
+                            13,
+                            AppText.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Layar 66: dibuka tanpa internet (Pro) — chat AI tidak aktif.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warnBg,
+        borderRadius: BorderRadius.circular(AppRadius.input),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(LucideIcons.wifiOff, size: 18, color: AppColors.warnIcon),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Lagi offline. ',
+                    style: AppText.style(
+                      13,
+                      AppText.w800,
+                      color: AppColors.warnText,
+                    ),
+                  ),
+                  const TextSpan(
+                    text:
+                        'Chat AI butuh internet buat nanya balik. Kalimat '
+                        'lengkap kayak "kopi 25rb" tetap bisa kecatat.',
+                  ),
+                ],
+              ),
+              style: AppText.style(13, AppText.w500, color: AppColors.warnText),
+            ),
+          ),
         ],
       ),
     );

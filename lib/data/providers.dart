@@ -15,6 +15,7 @@ import '../domain/types.dart';
 import '../domain/views.dart';
 import 'account.dart';
 import 'app_lock.dart';
+import 'chat_assistant.dart';
 import 'device_bridge.dart';
 import 'export/report_exporter.dart';
 import 'local/database.dart';
@@ -408,6 +409,11 @@ final monthReportProvider = StreamProvider.autoDispose
     .family<MonthReport, DateTime>(
       (ref, month) => ref.watch(reportRepositoryProvider).watchMonth(month),
     );
+
+/// Chat AI pencatat (layar 65–67), lewat edge function catat-chat.
+final chatAssistantProvider = Provider<ChatAssistant>(
+  (ref) => SupabaseChatAssistant(),
+);
 
 /// Pemakaian 7 hari terakhir (Beranda, layar 59).
 final weekUsageProvider = StreamProvider.autoDispose<WeekUsage>(
