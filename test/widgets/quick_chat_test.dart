@@ -127,6 +127,41 @@ void main() {
     expect(find.text('Kopi susu'), findsOneWidget);
   });
 
+  testWidgets('koreksi lewat chat: kartu diganti daftar baru dari AI', (
+    tester,
+  ) async {
+    AssistantReply catat(int amount) => AssistantReply(
+      action: ChatAction.catat,
+      reply: '',
+      notes: [
+        AiNote(
+          income: false,
+          amount: amount,
+          title: 'Parkir',
+          pocketName: 'Keinginan',
+        ),
+      ],
+    );
+    final chat = FakeChat()
+      ..replies.addAll([ChatAnswered(catat(3000)), ChatAnswered(catat(5000))]);
+    await pump(tester, chat);
+    await type(tester, 'parkir 3rb');
+    expect(find.text('-Rp 3.000'), findsOneWidget);
+    expect(find.text('Ada yang salah? Bilang aja…'), findsOneWidget);
+
+    await type(tester, 'parkirnya 5rb');
+    expect(chat.sent, hasLength(2));
+    final sent = chat.sent.last;
+    expect(sent.first.text, 'parkir 3rb');
+    expect(sent[1].fromUser, isFalse);
+    expect(sent[1].text, contains('Kartu sekarang'));
+    expect(sent[1].text, contains('Parkir -3000 (Keinginan)'));
+    expect(sent.last.text, 'parkirnya 5rb');
+    expect(find.text('-Rp 5.000'), findsOneWidget);
+    expect(find.text('-Rp 3.000'), findsNothing);
+    expect(find.text('Simpan 1 catatan'), findsOneWidget);
+  });
+
   testWidgets('belum Pro: kalimat jelas dibaca di HP, tanpa AI', (
     tester,
   ) async {

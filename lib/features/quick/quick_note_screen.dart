@@ -99,6 +99,10 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
 
   /// Obrolan dengan AI yang sedang berjalan (bot sedang bertanya balik).
   final _aiTurns = <ChatTurn>[];
+
+  /// Obrolan yang menghasilkan kartu catatan; dipakai saat user mengoreksi
+  /// lewat chat ("pakirnya 5rb").
+  List<ChatTurn> _readTurns = const [];
   List<_Draft> _drafts = [];
   int _daysAgo = 0;
   bool _saving = false;
@@ -157,19 +161,24 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     final text = _input.text.trim();
     if (text.isEmpty || _thinking) return;
     _input.clear();
+    // Kartu sudah ada & AI tersedia: kalimat ini koreksi untuk kartu itu.
+    final correcting = _drafts.isNotEmpty;
     setState(() {
       _log.add(_UserMsg(text));
-      _drafts = [];
+      if (!correcting) _drafts = [];
     });
     _scrollDown();
 
     // 1. catat. Pro & online: semua kalimat dianalisa AI dulu. Pembaca di HP
     //    cuma cadangan (belum Pro, offline, atau AI gagal). Kalau bot sedang
     //    bertanya balik, jawabannya dikirim ke AI bersama konteksnya.
-    final local = _aiTurns.isEmpty ? parseTextNote(text) : null;
+    final local = _aiTurns.isEmpty && !correcting ? parseTextNote(text) : null;
     if (local != null && (!_pro || _online == false)) {
       if (local is TextNotesRead) {
-        setState(() => _showLocal(local));
+        setState(() {
+          _showLocal(local);
+          _readTurns = [ChatTurn.user(text)];
+        });
         _focus.unfocus();
         _scrollDown();
         return;
@@ -185,7 +194,9 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     }
 
     // 2. Chat AI (catat. Pro): bertanya balik / mencatat / menolak.
-    final turns = [..._aiTurns, ChatTurn.user(text)];
+    final turns = correcting
+        ? [..._readTurns, ChatTurn.bot(_draftSummary()), ChatTurn.user(text)]
+        : [..._aiTurns, ChatTurn.user(text)];
     setState(() => _thinking = true);
     _scrollDown();
     final outcome = await ref
@@ -214,6 +225,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
           ),
         );
         _showLocal(local);
+        _readTurns = turns;
         return;
       }
       switch (outcome) {
@@ -266,6 +278,18 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     _scrollDown();
   }
 
+  /// Isi kartu saat ini (termasuk ubahan manual) untuk konteks koreksi AI.
+  String _draftSummary() {
+    final names = {for (final p in _pockets) p.id: p.name};
+    final items = [
+      for (final d in _drafts)
+        d.income
+            ? '${d.title} +${d.amount} (masuk)'
+            : '${d.title} -${d.amount} (${names[d.pocketId] ?? '-'})',
+    ];
+    return 'Kartu sekarang, $_dateLabel: ${items.join('; ')}';
+  }
+
   /// Hasil pembaca di HP jadi kartu catatan.
   void _showLocal(TextNotesRead local) {
     _daysAgo = local.daysAgo;
@@ -283,13 +307,19 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   void _onReply(AssistantReply reply, List<ChatTurn> turns) {
     switch (reply.action) {
       case ChatAction.tanya:
-        _aiTurns.addAll([...turns, ChatTurn.bot(reply.reply)]);
+        if (_drafts.isNotEmpty) {
+          // Lagi koreksi kartu: kartunya tetap, jawaban berikutnya koreksi.
+          _readTurns = [...turns, ChatTurn.bot(reply.reply)];
+        } else {
+          _aiTurns.addAll([...turns, ChatTurn.bot(reply.reply)]);
+        }
         _log.add(_BotMsg(reply.reply));
       case ChatAction.tolak:
         _log.add(_BotMsg(reply.reply, warn: true));
       case ChatAction.catat:
         final byName = {for (final p in _pockets) p.name: p.id};
         _daysAgo = reply.notes.first.daysAgo;
+        _readTurns = turns;
         _drafts = [
           for (final n in reply.notes)
             _Draft(
@@ -322,6 +352,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     setState(() {
       _log.clear();
       _aiTurns.clear();
+      _readTurns = const [];
       _drafts = [];
     });
     if (text != null) {
@@ -495,6 +526,15 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (read && pro) ...[
+                _InputBar(
+                  controller: _input,
+                  focus: _focus,
+                  onSend: _send,
+                  hint: 'Ada yang salah? Bilang aja…',
+                ),
+                const SizedBox(height: 10),
+              ],
               if (read)
                 AppButton(
                   label: 'Simpan ${_drafts.length} catatan',
