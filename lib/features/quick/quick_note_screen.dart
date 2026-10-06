@@ -163,24 +163,13 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     });
     _scrollDown();
 
-    // 1. Kalimat jelas dibaca di HP dulu (gratis, jalan tanpa internet).
-    //    Kalau bot sedang bertanya balik, jawabannya dikirim ke AI supaya
-    //    nyambung dengan pertanyaan tadi.
-    if (_aiTurns.isEmpty) {
-      final local = parseTextNote(text);
+    // 1. catat. Pro & online: semua kalimat dianalisa AI dulu. Pembaca di HP
+    //    cuma cadangan (belum Pro, offline, atau AI gagal). Kalau bot sedang
+    //    bertanya balik, jawabannya dikirim ke AI bersama konteksnya.
+    final local = _aiTurns.isEmpty ? parseTextNote(text) : null;
+    if (local != null && (!_pro || _online == false)) {
       if (local is TextNotesRead) {
-        setState(() {
-          _daysAgo = local.daysAgo;
-          _drafts = [
-            for (final n in local.notes)
-              _Draft(
-                income: n.isIncome,
-                amount: n.amount,
-                title: n.title,
-                pocketId: _pocketIdFor(n.title, n.pocketType),
-              ),
-          ];
-        });
+        setState(() => _showLocal(local));
         _focus.unfocus();
         _scrollDown();
         return;
@@ -210,6 +199,23 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     setState(() {
       _thinking = false;
       _aiTurns.clear();
+      // AI tidak bisa dipakai, tapi kalimatnya terbaca HP: pakai itu.
+      if (outcome is! ChatAnswered && local is TextNotesRead) {
+        if (outcome is ChatOffline) {
+          _online = false;
+          _recheck?.cancel();
+          _recheck = Timer(const Duration(seconds: 5), _checkOnline);
+        }
+        _log.add(
+          const _BotMsg(
+            'Chat AI lagi nggak bisa, jadi kubaca sendiri. Cek dulu ya '
+            'sebelum Simpan.',
+            warn: true,
+          ),
+        );
+        _showLocal(local);
+        return;
+      }
       switch (outcome) {
         case ChatAnswered(:final reply):
           _online = true;
@@ -258,6 +264,20 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     });
     if (_drafts.isNotEmpty) _focus.unfocus();
     _scrollDown();
+  }
+
+  /// Hasil pembaca di HP jadi kartu catatan.
+  void _showLocal(TextNotesRead local) {
+    _daysAgo = local.daysAgo;
+    _drafts = [
+      for (final n in local.notes)
+        _Draft(
+          income: n.isIncome,
+          amount: n.amount,
+          title: n.title,
+          pocketId: _pocketIdFor(n.title, n.pocketType),
+        ),
+    ];
   }
 
   void _onReply(AssistantReply reply, List<ChatTurn> turns) {

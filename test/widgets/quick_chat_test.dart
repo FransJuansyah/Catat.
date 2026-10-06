@@ -100,12 +100,50 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('kalimat jelas dibaca di HP, tanpa AI', (tester) async {
-    final chat = FakeChat();
+  testWidgets('Pro & online: kalimat jelas pun dianalisa AI dulu', (
+    tester,
+  ) async {
+    final chat = FakeChat()
+      ..replies.add(
+        const ChatAnswered(
+          AssistantReply(
+            action: ChatAction.catat,
+            reply: '',
+            notes: [
+              AiNote(
+                income: false,
+                amount: 25000,
+                title: 'Kopi susu',
+                pocketName: 'Keinginan',
+              ),
+            ],
+          ),
+        ),
+      );
     await pump(tester, chat);
+    await type(tester, 'kopi susu 25rb');
+    expect(chat.sent, hasLength(1));
+    expect(find.text('Kebaca 1 catatan'), findsOneWidget);
+    expect(find.text('Kopi susu'), findsOneWidget);
+  });
+
+  testWidgets('belum Pro: kalimat jelas dibaca di HP, tanpa AI', (
+    tester,
+  ) async {
+    final chat = FakeChat();
+    await pump(tester, chat, pro: false);
     await type(tester, 'kopi susu 25rb');
     expect(find.text('Kebaca 1 catatan'), findsOneWidget);
     expect(chat.sent, isEmpty);
+  });
+
+  testWidgets('AI gangguan: kalimat jelas tetap terbaca HP', (tester) async {
+    final chat = FakeChat()..replies.add(const ChatFailed());
+    await pump(tester, chat);
+    await type(tester, 'kopi susu 25rb');
+    expect(chat.sent, hasLength(1));
+    expect(find.textContaining('kubaca sendiri'), findsOneWidget);
+    expect(find.text('Kebaca 1 catatan'), findsOneWidget);
   });
 
   testWidgets('tidak jelas → bot tanya balik → jawaban nyambung → tercatat', (
