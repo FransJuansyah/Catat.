@@ -60,3 +60,6 @@ GoogleService-Info.plist
 
 # Foto struk untuk uji akurasi scan (unduh ulang: node tool/unduh_cord.js)
 /tool/struk_korpus/
+
+# Cache Supabase CLI
+/supabase/.temp/
