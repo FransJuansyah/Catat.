@@ -169,6 +169,16 @@ void main() {
     expect(find.text('Kebaca 1 catatan'), findsOneWidget);
   });
 
+  testWidgets('koneksi balik: banner offline hilang sendiri', (tester) async {
+    final chat = FakeChat(online: false);
+    await pump(tester, chat);
+    expect(find.textContaining('Lagi offline.'), findsOneWidget);
+    chat.online = true;
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Lagi offline.'), findsNothing);
+  });
+
   testWidgets('di luar urusan uang: bot menolak', (tester) async {
     final chat = FakeChat()
       ..replies.add(

@@ -55,14 +55,16 @@ class SupabaseChatAssistant implements ChatAssistant {
   @override
   Future<bool> isOnline() async {
     if (!cloudEnabled) return false;
-    try {
-      final host = Uri.parse(supabaseUrl).host;
-      final found = await InternetAddress.lookup(host)
-          .timeout(const Duration(seconds: 3));
-      return found.isNotEmpty;
-    } catch (_) {
-      return false;
+    final host = Uri.parse(supabaseUrl).host;
+    // Dua kali coba: jaringan HP yang baru bangun kadang lambat menjawab.
+    for (var i = 0; i < 2; i++) {
+      try {
+        final found = await InternetAddress.lookup(host)
+            .timeout(const Duration(seconds: 4));
+        if (found.isNotEmpty) return true;
+      } catch (_) {}
     }
+    return false;
   }
 
   @override

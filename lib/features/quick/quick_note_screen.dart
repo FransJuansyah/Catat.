@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -103,18 +104,30 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   bool _saving = false;
   bool _thinking = false;
   bool? _online;
+  Timer? _recheck;
 
   @override
   void initState() {
     super.initState();
     _input.addListener(() => setState(() {}));
-    ref.read(chatAssistantProvider).isOnline().then((online) {
-      if (mounted) setState(() => _online = online);
-    });
+    _checkOnline();
+  }
+
+  /// Cek internet; selama offline dicek ulang tiap beberapa detik supaya
+  /// banner hilang sendiri begitu koneksi balik.
+  Future<void> _checkOnline() async {
+    final online = await ref.read(chatAssistantProvider).isOnline();
+    if (!mounted) return;
+    setState(() => _online = online);
+    _recheck?.cancel();
+    if (!online) {
+      _recheck = Timer(const Duration(seconds: 5), _checkOnline);
+    }
   }
 
   @override
   void dispose() {
+    _recheck?.cancel();
     _input.dispose();
     _focus.dispose();
     _scroll.dispose();
@@ -199,9 +212,13 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
       _aiTurns.clear();
       switch (outcome) {
         case ChatAnswered(:final reply):
+          _online = true;
+          _recheck?.cancel();
           _onReply(reply, turns);
         case ChatOffline():
           _online = false;
+          _recheck?.cancel();
+          _recheck = Timer(const Duration(seconds: 5), _checkOnline);
           _log.add(
             _BotMsg(
               'Nggak ada koneksi. Chat AI butuh internet buat nanya balik. '
