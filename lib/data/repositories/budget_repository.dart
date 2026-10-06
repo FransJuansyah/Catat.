@@ -962,6 +962,14 @@ class BudgetRepository {
     });
   }
 
+  /// Ganti nama di profil (kartu profil di Akun).
+  Future<void> setUserName(String name) async {
+    final now = _now();
+    await (_db.update(_db.profiles)..where((t) => t.deletedAt.isNull())).write(
+      ProfilesCompanion(name: Value(name.trim()), updatedAt: Value(now)),
+    );
+  }
+
   // ----------------------------------------------------------------- home
 
   Future<HomeSummary> loadHome() async {

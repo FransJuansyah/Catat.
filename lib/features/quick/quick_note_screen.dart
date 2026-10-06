@@ -17,6 +17,7 @@ import '../../data/repositories/budget_repository.dart';
 import '../../domain/chat_reply.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pay_period.dart';
+import '../../domain/pocket_guess.dart';
 import '../../domain/receipt_parser.dart';
 import '../../domain/text_note_parser.dart';
 import '../../domain/types.dart';
@@ -123,12 +124,9 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
 
   bool get _pro => ref.read(proStatusProvider).value?.unlocked ?? false;
 
-  String? _pocketIdFor(PocketType type) {
-    final pockets = _pockets;
-    return (pockets.where((p) => p.type == type).firstOrNull ??
-            pockets.firstOrNull)
-        ?.id;
-  }
+  /// Kantong tebakan: nama/ikon kantong dulu, baru jenisnya.
+  String? _pocketIdFor(String title, PocketType type) =>
+      guessPocket(title, type, _pockets)?.id;
 
   void _scrollDown() => WidgetsBinding.instance.addPostFrameCallback((_) {
     if (_scroll.hasClients) {
@@ -164,7 +162,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                 income: n.isIncome,
                 amount: n.amount,
                 title: n.title,
-                pocketId: _pocketIdFor(n.pocketType),
+                pocketId: _pocketIdFor(n.title, n.pocketType),
               ),
           ];
         });
@@ -263,6 +261,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                   ? null
                   : byName[n.pocketName] ??
                         _pocketIdFor(
+                          n.title,
                           guessPocketType(ReceiptData(text: n.title)),
                         ),
             ),

@@ -46,6 +46,51 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     super.dispose();
   }
 
+  Future<void> _editName(String current) async {
+    final controller = TextEditingController(text: current);
+    final name = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheet) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          20 + MediaQuery.viewInsetsOf(sheet).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nama kamu', style: AppText.style(20, AppText.w800)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 30,
+              textCapitalization: TextCapitalization.words,
+              style: AppText.style(16, AppText.w700),
+              decoration: const InputDecoration(hintText: 'Mis. Frans'),
+              onSubmitted: (v) => Navigator.pop(sheet, v),
+            ),
+            const SizedBox(height: 12),
+            AppButton(
+              label: 'Simpan',
+              onPressed: () => Navigator.pop(sheet, controller.text),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.trim().isEmpty) return;
+    await ref.read(budgetRepositoryProvider).setUserName(name);
+  }
+
   Future<void> _setReminder(bool on) async {
     final bridge = ref.read(deviceBridgeProvider);
     if (on) await bridge.requestNotifications();
@@ -82,7 +127,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               onTap: () => context.push('/masuk-email?dari=akun'),
             )
           else
-            _ProfileCard(name: home?.userName ?? '', email: account.email),
+            _ProfileCard(
+              name: home?.userName ?? '',
+              email: account.email,
+              onTap: () => _editName(home?.userName ?? ''),
+            ),
           if (pro != null && (pro.purchased || pro.trialStart != null)) ...[
             const SizedBox(height: 12),
             _ProCard(
@@ -320,61 +369,74 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.name, this.email});
+  const _ProfileCard({required this.name, this.email, this.onTap});
 
   final String name;
   final String? email;
 
+  /// Ketuk = ubah nama.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final shown = name.trim().isEmpty ? 'Kamu' : name.trim();
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.cardPad),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppColors.lime,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              shown.characters.first.toUpperCase(),
-              style: AppText.style(22, AppText.w800),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  shown,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.style(18, AppText.w800),
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.cardPad),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.lime,
+                  shape: BoxShape.circle,
                 ),
-                if (email != null)
-                  Text(
-                    email!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.style(
-                      13,
-                      AppText.w500,
-                      color: AppColors.muted,
+                child: Text(
+                  shown.characters.first.toUpperCase(),
+                  style: AppText.style(22, AppText.w800),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shown,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.style(18, AppText.w800),
                     ),
-                  ),
-              ],
-            ),
+                    if (email != null)
+                      Text(
+                        email!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.style(
+                          13,
+                          AppText.w500,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                const Icon(
+                  LucideIcons.pencil,
+                  size: 18,
+                  color: AppColors.faint,
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

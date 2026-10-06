@@ -14,6 +14,7 @@ import '../../data/providers.dart';
 import '../../data/receipt_scanner.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../domain/home_summary.dart';
+import '../../domain/pocket_guess.dart';
 import '../../domain/receipt_parser.dart';
 import '../../domain/types.dart';
 
@@ -126,7 +127,11 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
     final pockets =
         ref.watch(homeSummaryProvider).value?.pockets ?? const <PocketView>[];
     final guessType = guessPocketType(_data);
-    final guessed = pockets.where((p) => p.type == guessType).firstOrNull;
+    final guessed = guessPocket(
+      [_data.merchant ?? '', ..._data.items.map((i) => i.name)].join(' '),
+      guessType,
+      pockets,
+    );
     final selectedId = _pocketId ?? guessed?.id;
 
     return Scaffold(

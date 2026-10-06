@@ -12,6 +12,16 @@ const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 const cloudEnabled = supabaseUrl != '' && supabaseKey != '';
 
+/// Email pemilik/penguji (dipisah koma) yang mendapat catat. Pro tanpa beli.
+/// Diisi lewat supabase.env.json (tidak di-commit), jadi build lain kosong.
+const ownerEmails = String.fromEnvironment('OWNER_EMAILS');
+
+bool isOwnerEmail(String? email, [String list = ownerEmails]) {
+  if (email == null || list.trim().isEmpty) return false;
+  final e = email.trim().toLowerCase();
+  return list.split(',').any((o) => o.trim().toLowerCase() == e);
+}
+
 /// Link di email masuk kembali ke app ini (`<applicationId>://masuk`). Harus
 /// terdaftar di Supabase: Authentication → URL Configuration → Redirect URLs.
 String? _loginRedirect;

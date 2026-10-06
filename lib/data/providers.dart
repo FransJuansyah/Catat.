@@ -654,9 +654,20 @@ final proStoreProvider = Provider<ProStore>((ref) {
   return store;
 });
 
-final proStatusProvider = StreamProvider<ProStatus>(
-  (ref) => ref.watch(proRepositoryProvider).watchStatus(),
-);
+/// Status Pro. Akun pemilik (OWNER_EMAILS) yang sedang masuk = Pro selamanya.
+final proStatusProvider = StreamProvider<ProStatus>((ref) {
+  final status = ref.watch(proRepositoryProvider).watchStatus();
+  final email = ref.watch(accountProvider.select((a) => a.email));
+  if (!isOwnerEmail(email, ref.watch(ownerEmailsProvider))) return status;
+  return status.map(
+    (s) => s.purchased
+        ? s
+        : ProStatus(trialStart: s.trialStart, purchasedAt: s.now, now: s.now),
+  );
+});
+
+/// Daftar email pemilik; di-override di test.
+final ownerEmailsProvider = Provider<String>((ref) => ownerEmails);
 
 class ProUiState {
   const ProUiState({
