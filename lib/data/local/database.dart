@@ -4,6 +4,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../../domain/bills.dart';
 import '../../domain/types.dart';
 
 part 'database.g.dart';
@@ -166,6 +167,23 @@ class IncomeAllocations extends Table with SyncedRow {
   ];
 }
 
+/// Tagihan & cicilan bulanan (layar 69–71). Lihat [Bill] untuk artinya.
+@DataClassName('BillRow')
+class Bills extends Table with SyncedRow {
+  TextColumn get name => text()();
+  TextColumn get iconKey => text()();
+  IntColumn get amount => integer().check(amount.isBiggerThanValue(0))();
+  IntColumn get dueDay => integer()();
+  TextColumn get kind => textEnum<BillKind>()();
+  IntColumn get remaining => integer().nullable()();
+
+  /// Kantong pembayaran; null kalau kantongnya dihapus (pakai kantong Wajib).
+  TextColumn get pocketId => text().nullable()();
+  BoolColumn get remind => boolean().withDefault(const Constant(true))();
+  IntColumn get startMonth => integer()();
+  IntColumn get paidThrough => integer()();
+}
+
 /// Antrian perubahan lokal yang belum dikirim ke akun (F8). Diisi otomatis
 /// oleh trigger SQLite di tiap tabel data, jadi tidak ada perubahan yang lolos.
 class SyncOutbox extends Table {
@@ -204,6 +222,7 @@ const syncedTables = [
   'expenses',
   'expense_items',
   'transfers',
+  'bills',
 ];
 
 @DriftDatabase(
@@ -220,6 +239,7 @@ const syncedTables = [
     Transfers,
     Incomes,
     IncomeAllocations,
+    Bills,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -228,7 +248,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'catat'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -271,6 +291,10 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           "UPDATE profiles SET trial_started_at = CAST(strftime('%s', 'now') AS INTEGER)",
         );
+      }
+      if (from < 8) {
+        await m.createTable(bills);
+        await _createSyncTriggers(); // trigger untuk tabel bills
       }
     },
     beforeOpen: (details) async {

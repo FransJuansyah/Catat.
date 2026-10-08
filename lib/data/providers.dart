@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../domain/bills.dart';
 import '../domain/home_summary.dart';
 import '../domain/usage_charts.dart';
 import '../domain/income_schedule.dart';
@@ -22,6 +23,7 @@ import 'local/database.dart';
 import 'payslip_reader.dart';
 import 'pro_store.dart';
 import 'receipt_scanner.dart';
+import 'repositories/bill_repository.dart';
 import 'repositories/budget_repository.dart';
 import 'repositories/report_repository.dart';
 import 'sync/sync_engine.dart';
@@ -53,6 +55,19 @@ final payslipReaderProvider = Provider<PayslipReader>(
 /// Apakah onboarding (gaji + kantong) sudah selesai. Dipakai Splash.
 final isSetUpProvider = FutureProvider.autoDispose<bool>(
   (ref) => ref.watch(budgetRepositoryProvider).isSetUp(),
+);
+
+final billRepositoryProvider = Provider<BillRepository>(
+  (ref) => BillRepository(
+    ref.watch(databaseProvider),
+    ref.watch(budgetRepositoryProvider),
+    ref.watch(clockProvider),
+  ),
+);
+
+/// Tagihan & cicilan aktif (layar 69, kartu Beranda 76).
+final billsProvider = StreamProvider<List<Bill>>(
+  (ref) => ref.watch(billRepositoryProvider).watchBills(),
 );
 
 final homeSummaryProvider = StreamProvider<HomeSummary>(

@@ -6672,6 +6672,810 @@ class IncomeAllocationsCompanion extends UpdateCompanion<IncomeAllocation> {
   }
 }
 
+class $BillsTable extends Bills with TableInfo<$BillsTable, BillRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BillsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconKeyMeta = const VerificationMeta(
+    'iconKey',
+  );
+  @override
+  late final GeneratedColumn<String> iconKey = GeneratedColumn<String>(
+    'icon_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(amount).isBiggerThanValue(0),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
+  @override
+  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
+    'due_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<BillKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<BillKind>($BillsTable.$converterkind);
+  static const VerificationMeta _remainingMeta = const VerificationMeta(
+    'remaining',
+  );
+  @override
+  late final GeneratedColumn<int> remaining = GeneratedColumn<int>(
+    'remaining',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pocketIdMeta = const VerificationMeta(
+    'pocketId',
+  );
+  @override
+  late final GeneratedColumn<String> pocketId = GeneratedColumn<String>(
+    'pocket_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remindMeta = const VerificationMeta('remind');
+  @override
+  late final GeneratedColumn<bool> remind = GeneratedColumn<bool>(
+    'remind',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("remind" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _startMonthMeta = const VerificationMeta(
+    'startMonth',
+  );
+  @override
+  late final GeneratedColumn<int> startMonth = GeneratedColumn<int>(
+    'start_month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paidThroughMeta = const VerificationMeta(
+    'paidThrough',
+  );
+  @override
+  late final GeneratedColumn<int> paidThrough = GeneratedColumn<int>(
+    'paid_through',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    iconKey,
+    amount,
+    dueDay,
+    kind,
+    remaining,
+    pocketId,
+    remind,
+    startMonth,
+    paidThrough,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'bills';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BillRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('icon_key')) {
+      context.handle(
+        _iconKeyMeta,
+        iconKey.isAcceptableOrUnknown(data['icon_key']!, _iconKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconKeyMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('due_day')) {
+      context.handle(
+        _dueDayMeta,
+        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueDayMeta);
+    }
+    if (data.containsKey('remaining')) {
+      context.handle(
+        _remainingMeta,
+        remaining.isAcceptableOrUnknown(data['remaining']!, _remainingMeta),
+      );
+    }
+    if (data.containsKey('pocket_id')) {
+      context.handle(
+        _pocketIdMeta,
+        pocketId.isAcceptableOrUnknown(data['pocket_id']!, _pocketIdMeta),
+      );
+    }
+    if (data.containsKey('remind')) {
+      context.handle(
+        _remindMeta,
+        remind.isAcceptableOrUnknown(data['remind']!, _remindMeta),
+      );
+    }
+    if (data.containsKey('start_month')) {
+      context.handle(
+        _startMonthMeta,
+        startMonth.isAcceptableOrUnknown(data['start_month']!, _startMonthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startMonthMeta);
+    }
+    if (data.containsKey('paid_through')) {
+      context.handle(
+        _paidThroughMeta,
+        paidThrough.isAcceptableOrUnknown(
+          data['paid_through']!,
+          _paidThroughMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_paidThroughMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BillRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BillRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      iconKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_key'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      dueDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_day'],
+      )!,
+      kind: $BillsTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      remaining: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remaining'],
+      ),
+      pocketId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pocket_id'],
+      ),
+      remind: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}remind'],
+      )!,
+      startMonth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_month'],
+      )!,
+      paidThrough: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}paid_through'],
+      )!,
+    );
+  }
+
+  @override
+  $BillsTable createAlias(String alias) {
+    return $BillsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<BillKind, String, String> $converterkind =
+      const EnumNameConverter<BillKind>(BillKind.values);
+}
+
+class BillRow extends DataClass implements Insertable<BillRow> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String name;
+  final String iconKey;
+  final int amount;
+  final int dueDay;
+  final BillKind kind;
+  final int? remaining;
+
+  /// Kantong pembayaran; null kalau kantongnya dihapus (pakai kantong Wajib).
+  final String? pocketId;
+  final bool remind;
+  final int startMonth;
+  final int paidThrough;
+  const BillRow({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.name,
+    required this.iconKey,
+    required this.amount,
+    required this.dueDay,
+    required this.kind,
+    this.remaining,
+    this.pocketId,
+    required this.remind,
+    required this.startMonth,
+    required this.paidThrough,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['name'] = Variable<String>(name);
+    map['icon_key'] = Variable<String>(iconKey);
+    map['amount'] = Variable<int>(amount);
+    map['due_day'] = Variable<int>(dueDay);
+    {
+      map['kind'] = Variable<String>($BillsTable.$converterkind.toSql(kind));
+    }
+    if (!nullToAbsent || remaining != null) {
+      map['remaining'] = Variable<int>(remaining);
+    }
+    if (!nullToAbsent || pocketId != null) {
+      map['pocket_id'] = Variable<String>(pocketId);
+    }
+    map['remind'] = Variable<bool>(remind);
+    map['start_month'] = Variable<int>(startMonth);
+    map['paid_through'] = Variable<int>(paidThrough);
+    return map;
+  }
+
+  BillsCompanion toCompanion(bool nullToAbsent) {
+    return BillsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      name: Value(name),
+      iconKey: Value(iconKey),
+      amount: Value(amount),
+      dueDay: Value(dueDay),
+      kind: Value(kind),
+      remaining: remaining == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remaining),
+      pocketId: pocketId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pocketId),
+      remind: Value(remind),
+      startMonth: Value(startMonth),
+      paidThrough: Value(paidThrough),
+    );
+  }
+
+  factory BillRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BillRow(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      name: serializer.fromJson<String>(json['name']),
+      iconKey: serializer.fromJson<String>(json['iconKey']),
+      amount: serializer.fromJson<int>(json['amount']),
+      dueDay: serializer.fromJson<int>(json['dueDay']),
+      kind: $BillsTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      remaining: serializer.fromJson<int?>(json['remaining']),
+      pocketId: serializer.fromJson<String?>(json['pocketId']),
+      remind: serializer.fromJson<bool>(json['remind']),
+      startMonth: serializer.fromJson<int>(json['startMonth']),
+      paidThrough: serializer.fromJson<int>(json['paidThrough']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'name': serializer.toJson<String>(name),
+      'iconKey': serializer.toJson<String>(iconKey),
+      'amount': serializer.toJson<int>(amount),
+      'dueDay': serializer.toJson<int>(dueDay),
+      'kind': serializer.toJson<String>(
+        $BillsTable.$converterkind.toJson(kind),
+      ),
+      'remaining': serializer.toJson<int?>(remaining),
+      'pocketId': serializer.toJson<String?>(pocketId),
+      'remind': serializer.toJson<bool>(remind),
+      'startMonth': serializer.toJson<int>(startMonth),
+      'paidThrough': serializer.toJson<int>(paidThrough),
+    };
+  }
+
+  BillRow copyWith({
+    String? id,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? name,
+    String? iconKey,
+    int? amount,
+    int? dueDay,
+    BillKind? kind,
+    Value<int?> remaining = const Value.absent(),
+    Value<String?> pocketId = const Value.absent(),
+    bool? remind,
+    int? startMonth,
+    int? paidThrough,
+  }) => BillRow(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    name: name ?? this.name,
+    iconKey: iconKey ?? this.iconKey,
+    amount: amount ?? this.amount,
+    dueDay: dueDay ?? this.dueDay,
+    kind: kind ?? this.kind,
+    remaining: remaining.present ? remaining.value : this.remaining,
+    pocketId: pocketId.present ? pocketId.value : this.pocketId,
+    remind: remind ?? this.remind,
+    startMonth: startMonth ?? this.startMonth,
+    paidThrough: paidThrough ?? this.paidThrough,
+  );
+  BillRow copyWithCompanion(BillsCompanion data) {
+    return BillRow(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      name: data.name.present ? data.name.value : this.name,
+      iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      remaining: data.remaining.present ? data.remaining.value : this.remaining,
+      pocketId: data.pocketId.present ? data.pocketId.value : this.pocketId,
+      remind: data.remind.present ? data.remind.value : this.remind,
+      startMonth: data.startMonth.present
+          ? data.startMonth.value
+          : this.startMonth,
+      paidThrough: data.paidThrough.present
+          ? data.paidThrough.value
+          : this.paidThrough,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillRow(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('amount: $amount, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('kind: $kind, ')
+          ..write('remaining: $remaining, ')
+          ..write('pocketId: $pocketId, ')
+          ..write('remind: $remind, ')
+          ..write('startMonth: $startMonth, ')
+          ..write('paidThrough: $paidThrough')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    iconKey,
+    amount,
+    dueDay,
+    kind,
+    remaining,
+    pocketId,
+    remind,
+    startMonth,
+    paidThrough,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BillRow &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.name == this.name &&
+          other.iconKey == this.iconKey &&
+          other.amount == this.amount &&
+          other.dueDay == this.dueDay &&
+          other.kind == this.kind &&
+          other.remaining == this.remaining &&
+          other.pocketId == this.pocketId &&
+          other.remind == this.remind &&
+          other.startMonth == this.startMonth &&
+          other.paidThrough == this.paidThrough);
+}
+
+class BillsCompanion extends UpdateCompanion<BillRow> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> name;
+  final Value<String> iconKey;
+  final Value<int> amount;
+  final Value<int> dueDay;
+  final Value<BillKind> kind;
+  final Value<int?> remaining;
+  final Value<String?> pocketId;
+  final Value<bool> remind;
+  final Value<int> startMonth;
+  final Value<int> paidThrough;
+  final Value<int> rowid;
+  const BillsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.name = const Value.absent(),
+    this.iconKey = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.remaining = const Value.absent(),
+    this.pocketId = const Value.absent(),
+    this.remind = const Value.absent(),
+    this.startMonth = const Value.absent(),
+    this.paidThrough = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BillsCompanion.insert({
+    required String id,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String name,
+    required String iconKey,
+    required int amount,
+    required int dueDay,
+    required BillKind kind,
+    this.remaining = const Value.absent(),
+    this.pocketId = const Value.absent(),
+    this.remind = const Value.absent(),
+    required int startMonth,
+    required int paidThrough,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       iconKey = Value(iconKey),
+       amount = Value(amount),
+       dueDay = Value(dueDay),
+       kind = Value(kind),
+       startMonth = Value(startMonth),
+       paidThrough = Value(paidThrough);
+  static Insertable<BillRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? name,
+    Expression<String>? iconKey,
+    Expression<int>? amount,
+    Expression<int>? dueDay,
+    Expression<String>? kind,
+    Expression<int>? remaining,
+    Expression<String>? pocketId,
+    Expression<bool>? remind,
+    Expression<int>? startMonth,
+    Expression<int>? paidThrough,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (name != null) 'name': name,
+      if (iconKey != null) 'icon_key': iconKey,
+      if (amount != null) 'amount': amount,
+      if (dueDay != null) 'due_day': dueDay,
+      if (kind != null) 'kind': kind,
+      if (remaining != null) 'remaining': remaining,
+      if (pocketId != null) 'pocket_id': pocketId,
+      if (remind != null) 'remind': remind,
+      if (startMonth != null) 'start_month': startMonth,
+      if (paidThrough != null) 'paid_through': paidThrough,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BillsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? name,
+    Value<String>? iconKey,
+    Value<int>? amount,
+    Value<int>? dueDay,
+    Value<BillKind>? kind,
+    Value<int?>? remaining,
+    Value<String?>? pocketId,
+    Value<bool>? remind,
+    Value<int>? startMonth,
+    Value<int>? paidThrough,
+    Value<int>? rowid,
+  }) {
+    return BillsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      name: name ?? this.name,
+      iconKey: iconKey ?? this.iconKey,
+      amount: amount ?? this.amount,
+      dueDay: dueDay ?? this.dueDay,
+      kind: kind ?? this.kind,
+      remaining: remaining ?? this.remaining,
+      pocketId: pocketId ?? this.pocketId,
+      remind: remind ?? this.remind,
+      startMonth: startMonth ?? this.startMonth,
+      paidThrough: paidThrough ?? this.paidThrough,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (iconKey.present) {
+      map['icon_key'] = Variable<String>(iconKey.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (dueDay.present) {
+      map['due_day'] = Variable<int>(dueDay.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $BillsTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (remaining.present) {
+      map['remaining'] = Variable<int>(remaining.value);
+    }
+    if (pocketId.present) {
+      map['pocket_id'] = Variable<String>(pocketId.value);
+    }
+    if (remind.present) {
+      map['remind'] = Variable<bool>(remind.value);
+    }
+    if (startMonth.present) {
+      map['start_month'] = Variable<int>(startMonth.value);
+    }
+    if (paidThrough.present) {
+      map['paid_through'] = Variable<int>(paidThrough.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BillsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('iconKey: $iconKey, ')
+          ..write('amount: $amount, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('kind: $kind, ')
+          ..write('remaining: $remaining, ')
+          ..write('pocketId: $pocketId, ')
+          ..write('remind: $remind, ')
+          ..write('startMonth: $startMonth, ')
+          ..write('paidThrough: $paidThrough, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6689,6 +7493,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IncomesTable incomes = $IncomesTable(this);
   late final $IncomeAllocationsTable incomeAllocations =
       $IncomeAllocationsTable(this);
+  late final $BillsTable bills = $BillsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6706,6 +7511,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transfers,
     incomes,
     incomeAllocations,
+    bills,
   ];
 }
 
@@ -12422,6 +13228,382 @@ typedef $$IncomeAllocationsTableProcessedTableManager =
       IncomeAllocation,
       PrefetchHooks Function({bool incomeId, bool pocketId})
     >;
+typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
+  required String id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  required String name,
+  required String iconKey,
+  required int amount,
+  required int dueDay,
+  required BillKind kind,
+  Value<int?> remaining,
+  Value<String?> pocketId,
+  Value<bool> remind,
+  required int startMonth,
+  required int paidThrough,
+  Value<int> rowid,
+});
+typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
+  Value<String> id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<String> name,
+  Value<String> iconKey,
+  Value<int> amount,
+  Value<int> dueDay,
+  Value<BillKind> kind,
+  Value<int?> remaining,
+  Value<String?> pocketId,
+  Value<bool> remind,
+  Value<int> startMonth,
+  Value<int> paidThrough,
+  Value<int> rowid,
+});
+
+class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<BillKind, BillKind, String> get kind =>
+      $composableBuilder(
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get remaining => $composableBuilder(
+    column: $table.remaining,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pocketId => $composableBuilder(
+    column: $table.pocketId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get remind => $composableBuilder(
+    column: $table.remind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startMonth => $composableBuilder(
+    column: $table.startMonth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get paidThrough => $composableBuilder(
+    column: $table.paidThrough,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BillsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remaining => $composableBuilder(
+    column: $table.remaining,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pocketId => $composableBuilder(
+    column: $table.pocketId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get remind => $composableBuilder(
+    column: $table.remind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startMonth => $composableBuilder(
+    column: $table.startMonth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get paidThrough => $composableBuilder(
+    column: $table.paidThrough,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BillsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BillsTable> {
+  $$BillsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get iconKey =>
+      $composableBuilder(column: $table.iconKey, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<int> get dueDay =>
+      $composableBuilder(column: $table.dueDay, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<BillKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get remaining =>
+      $composableBuilder(column: $table.remaining, builder: (column) => column);
+
+  GeneratedColumn<String> get pocketId =>
+      $composableBuilder(column: $table.pocketId, builder: (column) => column);
+
+  GeneratedColumn<bool> get remind =>
+      $composableBuilder(column: $table.remind, builder: (column) => column);
+
+  GeneratedColumn<int> get startMonth => $composableBuilder(
+    column: $table.startMonth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get paidThrough => $composableBuilder(
+    column: $table.paidThrough,
+    builder: (column) => column,
+  );
+}
+
+class $$BillsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BillsTable,
+          BillRow,
+          $$BillsTableFilterComposer,
+          $$BillsTableOrderingComposer,
+          $$BillsTableAnnotationComposer,
+          $$BillsTableCreateCompanionBuilder,
+          $$BillsTableUpdateCompanionBuilder,
+          (BillRow, BaseReferences<_$AppDatabase, $BillsTable, BillRow>),
+          BillRow,
+          PrefetchHooks Function()
+        > {
+  $$BillsTableTableManager(_$AppDatabase db, $BillsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BillsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BillsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BillsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> iconKey = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<int> dueDay = const Value.absent(),
+                Value<BillKind> kind = const Value.absent(),
+                Value<int?> remaining = const Value.absent(),
+                Value<String?> pocketId = const Value.absent(),
+                Value<bool> remind = const Value.absent(),
+                Value<int> startMonth = const Value.absent(),
+                Value<int> paidThrough = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BillsCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                name: name,
+                iconKey: iconKey,
+                amount: amount,
+                dueDay: dueDay,
+                kind: kind,
+                remaining: remaining,
+                pocketId: pocketId,
+                remind: remind,
+                startMonth: startMonth,
+                paidThrough: paidThrough,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String name,
+                required String iconKey,
+                required int amount,
+                required int dueDay,
+                required BillKind kind,
+                Value<int?> remaining = const Value.absent(),
+                Value<String?> pocketId = const Value.absent(),
+                Value<bool> remind = const Value.absent(),
+                required int startMonth,
+                required int paidThrough,
+                Value<int> rowid = const Value.absent(),
+              }) => BillsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                name: name,
+                iconKey: iconKey,
+                amount: amount,
+                dueDay: dueDay,
+                kind: kind,
+                remaining: remaining,
+                pocketId: pocketId,
+                remind: remind,
+                startMonth: startMonth,
+                paidThrough: paidThrough,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$BillsTable, BillRow>(table),
+                  BaseReferences<_$AppDatabase, $BillsTable, BillRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BillsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BillsTable,
+      BillRow,
+      $$BillsTableFilterComposer,
+      $$BillsTableOrderingComposer,
+      $$BillsTableAnnotationComposer,
+      $$BillsTableCreateCompanionBuilder,
+      $$BillsTableUpdateCompanionBuilder,
+      (BillRow, BaseReferences<_$AppDatabase, $BillsTable, BillRow>),
+      BillRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12450,4 +13632,6 @@ class $AppDatabaseManager {
       $$IncomesTableTableManager(_db, _db.incomes);
   $$IncomeAllocationsTableTableManager get incomeAllocations =>
       $$IncomeAllocationsTableTableManager(_db, _db.incomeAllocations);
+  $$BillsTableTableManager get bills =>
+      $$BillsTableTableManager(_db, _db.bills);
 }
