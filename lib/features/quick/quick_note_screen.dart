@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +10,7 @@ import '../../core/format.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
+import '../../core/widgets/chat_bubbles.dart';
 import '../../core/widgets/controls.dart';
 import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_chip.dart';
@@ -581,13 +581,19 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                     else ...[
                       for (final item in _log) ...[
                         switch (item) {
-                          _UserMsg(:final text) => _UserBubble(
+                          _UserMsg(:final text) => ChatUserBubble(
                             text: text,
                             onTap: read || _bills.isNotEmpty || _thinking
                                 ? null
                                 : () => _restart(text),
                           ),
-                          _BotMsg() => _BotBubble(message: item),
+                          _BotMsg() => ChatBotBubble(
+                            text: item.text,
+                            warn: item.warn,
+                            icon: item.icon,
+                            action: item.action,
+                            onAction: item.onAction,
+                          ),
                           _SimMsg(:final sim) => _SimCard(
                             sim: sim,
                             impact: _impact(sim.monthly),
@@ -613,7 +619,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                         const SizedBox(height: 12),
                       ],
                       if (_thinking) ...[
-                        const _BotBubble(message: _BotMsg(''), typing: true),
+                        const ChatBotBubble.typing(),
                         const SizedBox(height: 12),
                       ],
                       if (read) ..._readBody(),
@@ -630,7 +636,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
               ),
               const SizedBox(height: 12),
               if ((read || _bills.isNotEmpty) && pro) ...[
-                _InputBar(
+                ChatInputBar(
                   controller: _input,
                   focus: _focus,
                   onSend: _send,
@@ -655,7 +661,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                   onPressed: _saveBills,
                 )
               else
-                _InputBar(
+                ChatInputBar(
                   controller: _input,
                   focus: _focus,
                   onSend: _send,
@@ -789,40 +795,6 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   }
 }
 
-class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.text, this.onTap});
-
-  final String text;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 282),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.ink,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(6),
-            ),
-          ),
-          child: Text(
-            text,
-            style: AppText.style(15, AppText.w500, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ExampleChip extends StatelessWidget {
   const _ExampleChip({required this.text, required this.onTap});
 
@@ -854,81 +826,6 @@ class _ExampleChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _InputBar extends StatelessWidget {
-  const _InputBar({
-    required this.controller,
-    required this.focus,
-    required this.onSend,
-    this.hint,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focus;
-  final VoidCallback onSend;
-  final String? hint;
-
-  @override
-  Widget build(BuildContext context) {
-    final ready = controller.text.trim().isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 6, 6, 6),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: ready ? AppColors.ink : AppColors.line,
-          width: ready ? 1.5 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focus,
-              minLines: 1,
-              maxLines: 4,
-              maxLength: 300,
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
-              style: AppText.style(15, AppText.w700),
-              decoration: InputDecoration(
-                isCollapsed: true,
-                counterText: '',
-                border: InputBorder.none,
-                hintText: hint ?? 'Ketik catatan…',
-                hintStyle: AppText.style(
-                  15,
-                  AppText.w500,
-                  color: AppColors.faint,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: ready ? onSend : null,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: ready ? AppColors.ink : AppColors.disabledBg,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                LucideIcons.arrowUp,
-                size: 22,
-                color: ready ? AppColors.lime : Colors.white,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1173,150 +1070,6 @@ class _NotUnderstood extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// Gelembung bot (layar 65–66): avatar lime di kiri, latar putih; kuning untuk
-/// peringatan (offline, ditolak, jatah habis).
-class _BotBubble extends StatelessWidget {
-  const _BotBubble({required this.message, this.typing = false});
-
-  final _BotMsg message;
-
-  /// Titik-titik "lagi ngetik" saat menunggu AI.
-  final bool typing;
-
-  @override
-  Widget build(BuildContext context) {
-    final warn = message.warn;
-    final fg = warn ? AppColors.warnText : AppColors.ink;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconBadge(
-            icon:
-                message.icon ??
-                (warn ? LucideIcons.triangleAlert : LucideIcons.sparkles),
-            background: warn ? const Color(0xFFFDECB5) : AppColors.lime,
-            color: warn ? AppColors.warnIcon : AppColors.ink,
-            size: 28,
-            iconSize: 14,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 282),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: warn ? AppColors.warnBg : AppColors.card,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(6),
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (typing)
-                    const _TypingDots()
-                  else
-                    Text(
-                      message.text,
-                      style: AppText.style(15, AppText.w500, color: fg),
-                    ),
-                  if (message.action != null) ...[
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: message.onAction,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.ink,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
-                        child: Text(
-                          message.action!,
-                          style: AppText.style(
-                            13,
-                            AppText.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tiga titik yang naik bergantian, seolah bot lagi ngetik.
-class _TypingDots extends StatefulWidget {
-  const _TypingDots();
-
-  @override
-  State<_TypingDots> createState() => _TypingDotsState();
-}
-
-class _TypingDotsState extends State<_TypingDots>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 22,
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (context, _) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < 3; i++) ...[
-              if (i > 0) const SizedBox(width: 5),
-              _dot(i),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Titik ke-[i] naik di sepertiga putarannya sendiri, lalu turun lagi.
-  Widget _dot(int i) {
-    final t = (_anim.value - i * 0.18) % 1.0;
-    final lift = t < 0.36 ? math.sin(t / 0.36 * math.pi) : 0.0;
-    return Transform.translate(
-      offset: Offset(0, -5 * lift),
-      child: Container(
-        width: 7,
-        height: 7,
-        decoration: BoxDecoration(
-          color: Color.lerp(AppColors.muted, AppColors.ink, lift),
-          shape: BoxShape.circle,
-        ),
       ),
     );
   }
