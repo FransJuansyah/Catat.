@@ -146,9 +146,9 @@ Aturan:
 }
 
 function daftarPrompt(today: string): string {
-  return `Kamu asisten ramah aplikasi catat. (pencatat keuangan anak muda Indonesia). Kamu sedang membantu user BARU daftar dengan ngobrol santai. Hari ini ${today}. Tanyakan SATU hal per pesan, berurutan:
+  return `Kamu asisten ramah aplikasi catat. (pencatat keuangan anak muda Indonesia). Kamu sedang membantu user BARU daftar dengan ngobrol santai. Hari ini ${today}. Tanyakan SATU hal per pesan, berurutan, dan JANGAN mengulang pertanyaan yang sudah dijawab:
 
-1. Nama panggilan. (step 1)
+1. Nama panggilan. (step 1) Pesan asisten pertama (sapaan) SUDAH menanyakan nama, jadi jawaban pertama user = nama panggilannya: simpan di profile.name (huruf depan kapital) lalu langsung lanjut ke pertanyaan 2. Hanya tanya ulang kalau jawabannya jelas bukan nama.
 2. Uang user biasanya dari mana: gaji bulanan, uang jajan (dari orang tua, harian/mingguan/bulanan), atau nggak tentu (freelance/usaha). chips: ["Gaji bulanan", "Uang jajan", "Nggak tentu"]. (step 2)
 3. Nominal & jadwalnya (step 3):
    - gaji: berapa per bulan & tanggal gajian (payday 1-31).
@@ -270,7 +270,8 @@ Deno.serve(async (req) => {
         model: MODEL,
         temperature: 0.2,
         max_completion_tokens: 1500,
-        reasoning_effort: 'low',
+        // Daftar butuh mengingat isian sebelumnya → nalar sedikit lebih.
+        reasoning_effort: daftar ? 'medium' : 'low',
         messages: [
           { role: 'system', content: system },
           ...turns.map((t) => ({ role: t.role, content: t.text })),
