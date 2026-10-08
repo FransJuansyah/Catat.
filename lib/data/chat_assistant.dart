@@ -87,6 +87,7 @@ class SupabaseChatAssistant implements ChatAssistant {
             for (final p in pockets) {'name': p.name, 'type': p.type.name},
           ],
           'today': day,
+          'v': 2, // + cicilan & tagihan
         },
         abortSignal: Future<void>.delayed(const Duration(seconds: 25)),
       );

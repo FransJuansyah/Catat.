@@ -17,13 +17,17 @@ import '../../core/widgets/pocket_chip.dart';
 import '../../data/chat_assistant.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/budget_repository.dart';
+import '../../domain/bills.dart';
 import '../../domain/chat_reply.dart';
+import '../../domain/expense_icon.dart';
 import '../../domain/home_summary.dart';
+import '../../domain/installment.dart';
 import '../../domain/pay_period.dart';
 import '../../domain/pocket_guess.dart';
 import '../../domain/receipt_parser.dart';
 import '../../domain/text_note_parser.dart';
 import '../../domain/types.dart';
+import '../bills/bill_edit_screen.dart';
 
 /// Layar 60–67 · Catat pakai ketikan. Kalimat jelas dibaca di HP (gratis,
 /// offline); kalau tidak jelas, chat AI (catat. Pro, butuh internet) bertanya
@@ -85,6 +89,12 @@ class _BotMsg extends _Item {
   final VoidCallback? onAction;
 }
 
+/// Simulasi kredit dari AI (layar 72); tenornya bisa diganti di kartu.
+class _SimMsg extends _Item {
+  _SimMsg(this.sim);
+  InstallmentSim sim;
+}
+
 /// Pengenal di HP tidak paham & chat AI tidak dipakai (bukan Pro).
 class _LocalFail extends _Item {
   const _LocalFail({required this.needsAmount});
@@ -104,6 +114,9 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   /// lewat chat ("pakirnya 5rb").
   List<ChatTurn> _readTurns = const [];
   List<_Draft> _drafts = [];
+
+  /// Tagihan rutin dari AI yang belum disimpan (layar 73).
+  List<AiBill> _bills = [];
   int _daysAgo = 0;
   bool _saving = false;
   bool _thinking = false;
@@ -162,7 +175,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     if (text.isEmpty || _thinking) return;
     _input.clear();
     // Kartu sudah ada & AI tersedia: kalimat ini koreksi untuk kartu itu.
-    final correcting = _drafts.isNotEmpty;
+    final correcting = _drafts.isNotEmpty || _bills.isNotEmpty;
     setState(() {
       _log.add(_UserMsg(text));
       if (!correcting) _drafts = [];
@@ -195,7 +208,11 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
 
     // 2. Chat AI (catat. Pro): bertanya balik / mencatat / menolak.
     final turns = correcting
-        ? [..._readTurns, ChatTurn.bot(_draftSummary()), ChatTurn.user(text)]
+        ? [
+            ..._readTurns,
+            ChatTurn.bot(_bills.isNotEmpty ? _billSummary() : _draftSummary()),
+            ChatTurn.user(text),
+          ]
         : [..._aiTurns, ChatTurn.user(text)];
     setState(() => _thinking = true);
     _scrollDown();
@@ -290,6 +307,21 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
     return 'Kartu sekarang, $_dateLabel: ${items.join('; ')}';
   }
 
+  /// Isi kartu tagihan saat ini untuk konteks koreksi AI.
+  String _billSummary() {
+    final items = [
+      for (final b in _bills)
+        '${b.name} ${b.amount} tiap tgl ${b.dueDay}, '
+            '${b.remaining == null ? 'rutin' : 'sisa ${b.remaining}x'}',
+    ];
+    return 'Kartu sekarang (tagihan): ${items.join('; ')}';
+  }
+
+  /// Ringkasan simulasi untuk konteks pertanyaan lanjutan ("kalau 24 bulan?").
+  static String _simSummary(InstallmentSim s) =>
+      'Simulasi ${s.item}: harga ${s.price}, DP ${s.dp}, ${s.months} bulan, '
+      'bunga ${s.rateLabel}, cicilan ${s.monthly}/bulan';
+
   /// Hasil pembaca di HP jadi kartu catatan.
   void _showLocal(TextNotesRead local) {
     _daysAgo = local.daysAgo;
@@ -307,7 +339,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
   void _onReply(AssistantReply reply, List<ChatTurn> turns) {
     switch (reply.action) {
       case ChatAction.tanya:
-        if (_drafts.isNotEmpty) {
+        if (_drafts.isNotEmpty || _bills.isNotEmpty) {
           // Lagi koreksi kartu: kartunya tetap, jawaban berikutnya koreksi.
           _readTurns = [...turns, ChatTurn.bot(reply.reply)];
         } else {
@@ -320,6 +352,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
         final byName = {for (final p in _pockets) p.name: p.id};
         _daysAgo = reply.notes.first.daysAgo;
         _readTurns = turns;
+        _bills = [];
         _drafts = [
           for (final n in reply.notes)
             _Draft(
@@ -338,7 +371,53 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
         // Kalimat tetap: catatan baru tersimpan setelah user ketuk Simpan,
         // jangan sampai AI bilang "sudah masuk".
         _log.add(const _BotMsg('Siap, cek dulu ya. Udah pas? Ketuk Simpan.'));
+      case ChatAction.cicilan:
+        final sim = reply.sim!;
+        _log
+          ..add(_BotMsg(reply.reply))
+          ..add(_SimMsg(sim));
+        _aiTurns.addAll([...turns, ChatTurn.bot(_simSummary(sim))]);
+      case ChatAction.tagihan:
+        _drafts = [];
+        _bills = reply.bills;
+        _readTurns = turns;
+        _log.add(
+          const _BotMsg(
+            'Siap, cek dulu ya. Nanti aku ingetin sehari sebelum jatuh tempo.',
+          ),
+        );
     }
+  }
+
+  /// Simpan tagihan dari chat (layar 73) lalu buka daftar tagihan.
+  Future<void> _saveBills() async {
+    if (_bills.isEmpty || _saving) return;
+    setState(() => _saving = true);
+    final repo = ref.read(billRepositoryProvider);
+    final byName = {for (final p in _pockets) p.name: p.id};
+    final wajib = _pockets.where((p) => p.type == PocketType.wajib).firstOrNull;
+    for (final b in _bills) {
+      await repo.addBill(
+        name: b.name,
+        iconKey: guessExpenseIcon(b.name, fallback: 'receipt'),
+        amount: b.amount,
+        dueDay: b.dueDay,
+        kind: b.remaining == null ? BillKind.rutin : BillKind.cicilan,
+        remaining: b.remaining,
+        pocketId: byName[b.pocketName] ?? wajib?.id,
+      );
+    }
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    context.pushReplacement('/tagihan');
+  }
+
+  /// Dampak ke pemasukan: [added] per bulan dibanding semua tagihan.
+  BillImpact? _impact(int added) {
+    final home = ref.read(homeSummaryProvider).value;
+    if (home == null) return null;
+    final bills = ref.read(billsProvider).value ?? const [];
+    return BillImpact.of(added, bills, monthlyIncomeOf(home));
   }
 
   void _useExample(String text) {
@@ -354,6 +433,7 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
       _aiTurns.clear();
       _readTurns = const [];
       _drafts = [];
+      _bills = [];
     });
     if (text != null) {
       _input.text = text;
@@ -503,11 +583,27 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                         switch (item) {
                           _UserMsg(:final text) => _UserBubble(
                             text: text,
-                            onTap: read || _thinking
+                            onTap: read || _bills.isNotEmpty || _thinking
                                 ? null
                                 : () => _restart(text),
                           ),
                           _BotMsg() => _BotBubble(message: item),
+                          _SimMsg(:final sim) => _SimCard(
+                            sim: sim,
+                            impact: _impact(sim.monthly),
+                            onMonths: (m) =>
+                                setState(() => item.sim = sim.withMonths(m)),
+                            onMakeBill: () => context.push(
+                              '/tagihan/baru',
+                              extra: BillDraft(
+                                name: sim.item.isEmpty
+                                    ? 'Cicilan'
+                                    : 'Cicilan ${sim.item}',
+                                amount: sim.monthly,
+                                remaining: sim.months,
+                              ),
+                            ),
+                          ),
                           _LocalFail(:final needsAmount) => _NotUnderstood(
                             needsAmount: needsAmount,
                             onExample: _useExample,
@@ -521,12 +617,19 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                         const SizedBox(height: 12),
                       ],
                       if (read) ..._readBody(),
+                      if (_bills.isNotEmpty)
+                        _BillsCard(
+                          bills: _bills,
+                          impact: _impact(
+                            _bills.fold(0, (s, b) => s + b.amount),
+                          ),
+                        ),
                     ],
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              if (read && pro) ...[
+              if ((read || _bills.isNotEmpty) && pro) ...[
                 _InputBar(
                   controller: _input,
                   focus: _focus,
@@ -542,12 +645,25 @@ class _QuickNoteScreenState extends ConsumerState<QuickNoteScreen> {
                   loading: _saving,
                   onPressed: _save,
                 )
+              else if (_bills.isNotEmpty)
+                AppButton(
+                  label: _bills.length == 1
+                      ? 'Simpan tagihan'
+                      : 'Simpan ${_bills.length} tagihan',
+                  icon: LucideIcons.check,
+                  loading: _saving,
+                  onPressed: _saveBills,
+                )
               else
                 _InputBar(
                   controller: _input,
                   focus: _focus,
                   onSend: _send,
-                  hint: _aiTurns.isNotEmpty ? 'Jawab di sini…' : null,
+                  hint: _log.lastOrNull is _SimMsg
+                      ? 'Tanya lagi…'
+                      : _aiTurns.isNotEmpty
+                      ? 'Jawab di sini…'
+                      : null,
                 ),
             ],
           ),
@@ -1487,6 +1603,336 @@ class _RibuanFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
+/// Layar 72: kartu simulasi cicilan + dampak ke gaji + tombol.
+class _SimCard extends StatelessWidget {
+  const _SimCard({
+    required this.sim,
+    required this.impact,
+    required this.onMonths,
+    required this.onMakeBill,
+  });
+
+  final InstallmentSim sim;
+  final BillImpact? impact;
+  final ValueChanged<int> onMonths;
+  final VoidCallback onMakeBill;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(String k, String v) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              k,
+              style: AppText.style(14, AppText.w500, color: AppColors.muted),
+            ),
+          ),
+          Text(v, style: AppText.style(14, AppText.w700)),
+        ],
+      ),
+    );
+    final i = impact;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.cardLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const IconBadge(
+                icon: LucideIcons.calculator,
+                background: AppColors.lime,
+                color: AppColors.ink,
+                size: 28,
+                iconSize: 14,
+              ),
+              const SizedBox(width: 10),
+              Text('Simulasi cicilan', style: AppText.style(15, AppText.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          row(
+            sim.item.isEmpty ? 'Harga' : 'Harga ${sim.item}',
+            rupiah(sim.price),
+          ),
+          if (sim.dp > 0) row('DP', '-${rupiah(sim.dp)}'),
+          row(
+            sim.ratePercent == 0
+                ? 'Tanpa bunga'
+                : 'Bunga ${sim.rateLabel.replaceAll(' per ', '/')} × ${sim.months} bulan',
+            '+${rupiah(sim.interest)}',
+          ),
+          const SizedBox(height: 6),
+          const Divider(height: 1, color: AppColors.line),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                rupiah(sim.monthly),
+                style: AppText.style(30, AppText.w800, spacingPercent: -3),
+              ),
+              const SizedBox(width: 6),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text(
+                  '/bulan × ${sim.months}',
+                  style: AppText.style(
+                    14,
+                    AppText.w700,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'Total bayar ${rupiah(sim.total)}'
+            '${sim.interest > 0 ? ' (lebih ${rupiahShort(sim.interest)} dari harga)' : ''}',
+            style: AppText.style(12, AppText.w500, color: AppColors.muted),
+          ),
+          if (i != null) ...[
+            const SizedBox(height: 10),
+            _ImpactNote(
+              text: i.safe
+                  ? '${BillImpact.pct(i.share)} dari gajimu. Total cicilan jadi '
+                        '${BillImpact.pct(i.totalShare)}, masih aman (di bawah 30%).'
+                  : '${BillImpact.pct(i.share)} dari gajimu. Total cicilan jadi '
+                        '${BillImpact.pct(i.totalShare)}, lewat batas aman 30%.',
+              safe: i.safe,
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Material(
+                  color: AppColors.ink,
+                  borderRadius: BorderRadius.circular(AppRadius.segment),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.segment),
+                    onTap: onMakeBill,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            LucideIcons.plus,
+                            size: 16,
+                            color: AppColors.lime,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Jadikan tagihan',
+                            style: AppText.style(
+                              14,
+                              AppText.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Material(
+                color: AppColors.card,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.segment),
+                  side: const BorderSide(color: AppColors.line),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.segment),
+                  onTap: () => onMonths(sim.altMonths),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      'Coba ${sim.altMonths} bulan',
+                      style: AppText.style(14, AppText.w800),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kotak dampak ke gaji: hijau (aman) / kuning (lewat 30%).
+class _ImpactNote extends StatelessWidget {
+  const _ImpactNote({required this.text, required this.safe});
+
+  final String text;
+  final bool safe;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = safe ? AppColors.success : AppColors.warnText;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: safe ? AppColors.successSoft : AppColors.warnBg,
+        borderRadius: BorderRadius.circular(AppRadius.segment),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            safe ? LucideIcons.check : LucideIcons.triangleAlert,
+            size: 16,
+            color: safe ? AppColors.success : AppColors.warnIcon,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: AppText.style(13, AppText.w700, color: fg),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Layar 73: tagihan baru dari chat, belum disimpan.
+class _BillsCard extends ConsumerWidget {
+  const _BillsCard({required this.bills, required this.impact});
+
+  final List<AiBill> bills;
+  final BillImpact? impact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(clockProvider)();
+    final i = impact;
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.cardLg),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const IconBadge(
+                    icon: LucideIcons.bell,
+                    background: AppColors.lime,
+                    color: AppColors.ink,
+                    size: 28,
+                    iconSize: 14,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    bills.length == 1
+                        ? 'Tagihan baru'
+                        : '${bills.length} tagihan baru',
+                    style: AppText.style(15, AppText.w800),
+                  ),
+                ],
+              ),
+              for (final b in bills) ...[
+                const SizedBox(height: 4),
+                _AiBillRow(bill: b, today: today),
+              ],
+            ],
+          ),
+        ),
+        if (i != null) ...[
+          const SizedBox(height: 12),
+          _ImpactNote(
+            text: i.safe
+                ? 'Semua cicilanmu jadi ${BillImpact.pct(i.totalShare)} dari gaji. '
+                      'Masih aman (di bawah 30%).'
+                : 'Semua cicilanmu jadi ${BillImpact.pct(i.totalShare)} dari gaji. '
+                      'Udah lewat batas aman 30%.',
+            safe: i.safe,
+          ),
+        ],
+        const SizedBox(height: 14),
+      ],
+    );
+  }
+}
+
+class _AiBillRow extends StatelessWidget {
+  const _AiBillRow({required this.bill, required this.today});
+
+  final AiBill bill;
+  final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = firstDueMonth(bill.dueDay, today);
+    final rem = bill.remaining;
+    final sub = rem == null
+        ? 'Tgl ${bill.dueDay} · tiap bulan'
+        : 'Tgl ${bill.dueDay} · ${rem}x lagi · lunas ${monthLabel(start + rem - 1)}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          IconBadge(
+            icon: PocketVisuals.icon(
+              guessExpenseIcon(bill.name, fallback: 'receipt'),
+            ),
+            background: AppColors.track,
+            color: AppColors.ink,
+            size: 42,
+            iconSize: 20,
+            square: true,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bill.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.style(15, AppText.w800),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.style(
+                    12,
+                    AppText.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(rupiah(bill.amount), style: AppText.style(15, AppText.w800)),
+        ],
+      ),
     );
   }
 }

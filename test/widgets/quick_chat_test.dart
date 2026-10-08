@@ -162,6 +162,87 @@ void main() {
     expect(find.text('Simpan 1 catatan'), findsOneWidget);
   });
 
+  testWidgets('hitung cicilan: kartu simulasi, ganti tenor, konteks lanjut', (
+    tester,
+  ) async {
+    final chat = FakeChat()
+      ..replies.addAll([
+        ChatAnswered(
+          AssistantReply.fromJson({
+            'action': 'cicilan',
+            'reply': 'Ini hitungannya, pakai bunga flat 2% per bulan ya.',
+            'sim': {
+              'item': 'HP',
+              'price': 3000000,
+              'dp': 500000,
+              'months': 12,
+              'rate': 2,
+              'rate_per': 'bulan',
+            },
+          }),
+        ),
+        const ChatAnswered(
+          AssistantReply(
+            action: ChatAction.tanya,
+            reply: 'DP-nya jadi berapa?',
+          ),
+        ),
+      ]);
+    await pump(tester, chat);
+    await type(tester, 'kalo kredit hp 3jt dp 500rb 12 bulan bunga 2%');
+    expect(find.text('Simulasi cicilan'), findsOneWidget);
+    expect(find.text('Rp 258.334'), findsOneWidget);
+    expect(find.text('Jadikan tagihan'), findsOneWidget);
+    expect(find.text('Tanya lagi…'), findsOneWidget);
+
+    await tester.tap(find.text('Coba 6 bulan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rp 466.667'), findsOneWidget);
+    expect(find.text('Coba 12 bulan'), findsOneWidget);
+
+    await type(tester, 'kalo dp 1jt?');
+    final sent = chat.sent.last;
+    expect(sent[1].fromUser, isFalse);
+    expect(sent[1].text, contains('Simulasi HP'));
+    expect(sent.last.text, 'kalo dp 1jt?');
+  });
+
+  testWidgets('tagihan lewat chat: kartu tagihan + koreksi kirim isi kartu', (
+    tester,
+  ) async {
+    Map<String, Object?> motor(int day) => {
+      'action': 'tagihan',
+      'reply': '',
+      'bills': [
+        {
+          'name': 'Cicilan motor',
+          'amount': 850000,
+          'due_day': day,
+          'remaining': 20,
+        },
+      ],
+    };
+    final chat = FakeChat()
+      ..replies.addAll([
+        ChatAnswered(AssistantReply.fromJson(motor(5))),
+        ChatAnswered(AssistantReply.fromJson(motor(6))),
+      ]);
+    await pump(tester, chat);
+    await type(tester, 'cicilan motor 850rb tiap tanggal 5, sisa 20x lagi');
+    expect(find.text('Tagihan baru'), findsOneWidget);
+    expect(find.text('Cicilan motor'), findsOneWidget);
+    // 9 hari setelah 6 Okt → mulai Nov 2026, 20x → Jun 2028.
+    expect(find.text('Tgl 5 · 20x lagi · lunas Jun 2028'), findsOneWidget);
+    expect(find.text('Simpan tagihan'), findsOneWidget);
+    expect(find.text('Ada yang salah? Bilang aja…'), findsOneWidget);
+
+    await type(tester, 'tanggalnya 6');
+    final sent = chat.sent.last;
+    expect(sent[1].text, contains('Kartu sekarang (tagihan)'));
+    expect(sent[1].text, contains('Cicilan motor 850000 tiap tgl 5'));
+    expect(find.textContaining('Tgl 6 ·'), findsOneWidget);
+  });
+
   testWidgets('belum Pro: kalimat jelas dibaca di HP, tanpa AI', (
     tester,
   ) async {
