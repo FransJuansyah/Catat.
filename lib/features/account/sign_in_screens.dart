@@ -330,7 +330,7 @@ class _SignInCodeScreenState extends ConsumerState<SignInCodeScreen> {
       final setUp = await ref.read(budgetRepositoryProvider).isSetUp();
       if (!mounted) return;
       if (!setUp) {
-        context.go('/sumber-uang');
+        context.go('/daftar-ai');
       } else {
         context.go(widget.from == 'akun' ? '/akun' : '/beranda');
       }

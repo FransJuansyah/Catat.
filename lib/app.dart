@@ -50,6 +50,7 @@ import 'features/scan/scan_reading_screen.dart';
 import 'features/scan/scan_result_screen.dart';
 import 'features/report/export_done_screen.dart';
 import 'features/bills/bill_edit_screen.dart';
+import 'features/onboarding/ai_onboarding_screen.dart';
 import 'features/bills/bills_screen.dart';
 import 'features/report/export_progress_screen.dart';
 import 'features/report/export_screen.dart';
@@ -83,6 +84,7 @@ GoRouter createRouter({
       ),
     ),
     GoRoute(path: '/sumber-uang', builder: (_, _) => const SourceScreen()),
+    GoRoute(path: '/daftar-ai', builder: (_, _) => const AiOnboardingScreen()),
     GoRoute(path: '/atur-gaji', builder: (_, _) => const SalarySetupScreen()),
     GoRoute(
       path: '/baca-slip',

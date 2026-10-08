@@ -18,7 +18,9 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    void start() => context.push('/sumber-uang');
+    // Ada server → daftar sambil ngobrol dengan AI (layar 74); offline /
+    // build lokal → formulir (layar 27).
+    void start() => context.push(cloudEnabled ? '/daftar-ai' : '/sumber-uang');
     void email() => cloudEnabled ? context.push('/masuk-email') : start();
     void google() {
       if (!cloudEnabled) return start();

@@ -4,7 +4,6 @@ import 'package:catat/data/local/database.dart';
 import 'package:catat/data/providers.dart';
 import 'package:catat/data/repositories/budget_repository.dart';
 import 'package:catat/domain/chat_reply.dart';
-import 'package:catat/domain/home_summary.dart';
 import 'package:catat/domain/pro.dart';
 import 'package:catat/domain/templates.dart';
 import 'package:catat/features/quick/quick_note_screen.dart';
@@ -15,27 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// AI palsu: jawaban diantre, permintaan dicatat.
-class FakeChat implements ChatAssistant {
-  FakeChat({this.online = true});
-
-  bool online;
-  final replies = <ChatOutcome>[];
-  final sent = <List<ChatTurn>>[];
-
-  @override
-  Future<bool> isOnline() async => online;
-
-  @override
-  Future<ChatOutcome> send({
-    required List<ChatTurn> turns,
-    required List<PocketView> pockets,
-    required DateTime today,
-  }) async {
-    sent.add(turns);
-    return replies.removeAt(0);
-  }
-}
+import '../helpers/fake_chat.dart';
 
 /// Layar 60, 65–67: kalimat jelas dibaca di HP, yang tidak jelas ke chat AI.
 void main() {
