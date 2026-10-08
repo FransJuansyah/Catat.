@@ -13,6 +13,7 @@ import '../../data/account.dart';
 import '../../data/app_lock.dart';
 import '../../data/device_bridge.dart';
 import '../../data/providers.dart';
+import '../../domain/bills.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/pro.dart';
 import '../../domain/types.dart';
@@ -145,6 +146,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ListCard(
             children: [
               if (home != null) _incomeRow(context, home),
+              _billsRow(context, ref),
               _Row(
                 icon: LucideIcons.scale,
                 title: 'Sesuaikan saldo',
@@ -323,6 +325,24 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         ),
       );
     }
+  }
+
+  /// Layar 69: "2 belum dibayar · terdekat besok".
+  Widget _billsRow(BuildContext context, WidgetRef ref) {
+    final bills = ref.watch(billsProvider).value ?? const [];
+    final today = ref.watch(clockProvider)();
+    final s = summarizeBills(bills, today);
+    final next = s.unpaid.firstOrNull;
+    return _Row(
+      icon: LucideIcons.calendarClock,
+      title: 'Tagihan & cicilan',
+      subtitle: next == null
+          ? (s.count == 0
+                ? 'Ingetin sebelum jatuh tempo'
+                : 'Bulan ini lunas semua')
+          : '${s.unpaid.length} belum dibayar · ${next.name} ${dueLabel(next.daysLeft(today)).toLowerCase()}',
+      onTap: () => context.push('/tagihan'),
+    );
   }
 
   Widget _incomeRow(BuildContext context, HomeSummary home) {

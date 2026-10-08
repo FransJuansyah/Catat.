@@ -49,6 +49,8 @@ import 'features/quick/quick_note_screen.dart';
 import 'features/scan/scan_reading_screen.dart';
 import 'features/scan/scan_result_screen.dart';
 import 'features/report/export_done_screen.dart';
+import 'features/bills/bill_edit_screen.dart';
+import 'features/bills/bills_screen.dart';
 import 'features/report/export_progress_screen.dart';
 import 'features/report/export_screen.dart';
 import 'features/report/report_screen.dart';
@@ -245,6 +247,23 @@ GoRouter createRouter({
           path: ':id',
           builder: (_, state) =>
               PocketDetailScreen(pocketId: state.pathParameters['id']!),
+        ),
+      ],
+    ),
+    GoRoute(
+      path: '/tagihan',
+      builder: (_, state) =>
+          BillsScreen(payId: state.uri.queryParameters['bayar']),
+      routes: [
+        GoRoute(
+          path: 'baru',
+          builder: (_, state) =>
+              BillEditScreen(draft: state.extra as BillDraft?),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (_, state) =>
+              BillEditScreen(billId: state.pathParameters['id']!),
         ),
       ],
     ),

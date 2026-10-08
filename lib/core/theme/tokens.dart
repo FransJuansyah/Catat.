@@ -29,6 +29,10 @@ abstract final class AppColors {
   static const warnBg = Color(0xFFFEF7DC);
   static const warnIcon = Color(0xFFA16207);
   static const warnText = Color(0xFF854D0E);
+
+  /// Lencana/pil kuning di atas warnBg (status "Besok", ikon peringatan).
+  static const warnBadge = Color(0xFFFDECB5);
+  static const successSoft = Color(0xFFE2F6EC);
 }
 
 abstract final class AppRadius {

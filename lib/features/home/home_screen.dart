@@ -9,8 +9,10 @@ import '../../core/widgets/icon_badge.dart';
 import '../../core/widgets/pocket_card.dart';
 import '../../core/widgets/usage_charts.dart';
 import '../../data/providers.dart';
+import '../../domain/bills.dart';
 import '../../domain/home_summary.dart';
 import '../../domain/types.dart';
+import '../bills/bill_widgets.dart';
 import '../pocket/low_pocket_sheet.dart';
 
 /// Layar 59 · Beranda — design/screens/59 · Beranda (Ketik & Baterai Duit).png
@@ -95,6 +97,7 @@ class _HomeContent extends StatelessWidget {
           _RunningHero(summary: summary)
         else
           _BalanceHero(summary: summary),
+        const _BillDueCard(),
         const SizedBox(height: AppSpace.section),
         _TypeBar(onTap: () => context.push('/catat-ketik')),
         const SizedBox(height: AppSpace.section),
@@ -459,6 +462,96 @@ class _Battery extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Layar 76: tagihan ≤ 3 hari lagi (atau telat) di bawah saldo, dengan
+/// tombol "Udah bayar". Tidak tampil kalau tidak ada.
+class _BillDueCard extends ConsumerWidget {
+  const _BillDueCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bills = ref.watch(billsProvider).value ?? const [];
+    final today = ref.watch(clockProvider)();
+    final due = dueSoon(bills, today);
+    if (due.isEmpty) return const SizedBox.shrink();
+    final b = due.first;
+    final days = b.daysLeft(today);
+    final late = days < 0;
+    final fg = late ? AppColors.danger : AppColors.warnText;
+    final pockets = ref.watch(homeSummaryProvider).value?.pockets ?? const [];
+    final pocket = pockets.where((p) => p.id == b.pocketId).firstOrNull;
+    final more = due.length > 1 ? ' · +${due.length - 1} lagi' : '';
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Material(
+        color: late ? AppColors.dangerSoft : AppColors.warnBg,
+        borderRadius: BorderRadius.circular(AppRadius.cardLg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/tagihan'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                IconBadge(
+                  icon: PocketVisuals.icon(b.iconKey),
+                  background: late ? AppColors.card : AppColors.warnBadge,
+                  color: late ? AppColors.danger : AppColors.warnIcon,
+                  size: 40,
+                  iconSize: 19,
+                  square: true,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${b.name} ${dueLabel(days).toLowerCase()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.style(15, AppText.w800, color: fg),
+                      ),
+                      Text(
+                        '${rupiah(b.amount)}${pocket == null ? '' : ' · dari ${pocket.name}'}$more',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.style(13, AppText.w500, color: fg),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: AppColors.ink,
+                  shape: const StadiumBorder(),
+                  child: InkWell(
+                    customBorder: const StadiumBorder(),
+                    onTap: () => showBillActions(context, ref, b),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      child: Text(
+                        'Udah bayar',
+                        style: AppText.style(
+                          13,
+                          AppText.w800,
+                          color: AppColors.lime,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

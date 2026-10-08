@@ -8,11 +8,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 
-/// Notifikasi catat.: cuma pengingat harian (lihat [DailyReminder]).
+/// Notifikasi catat.: pengingat harian ([DailyReminder]) & tagihan ([BillReminder]).
 /// Catat otomatis dari notifikasi bank/SMS/email dihapus 5 Okt 2026.
 object AppNotifications {
     const val ACTION_REMINDER = "id.catat.catat.REMINDER"
     const val CHANNEL_REMINDER = "pengingat"
+    const val CHANNEL_BILLS = "tagihan"
 
     /// Saluran & pengaturan peninggalan catat otomatis.
     private const val LEGACY_CHANNEL = "transaksi"
@@ -35,6 +36,13 @@ object AppNotifications {
                 "Pengingat harian",
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply { description = "Pengingat kalau hari ini belum catat" },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_BILLS,
+                "Pengingat tagihan",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply { description = "Cicilan & tagihan yang jatuh tempo besok" },
         )
         manager.deleteNotificationChannel(LEGACY_CHANNEL)
     }

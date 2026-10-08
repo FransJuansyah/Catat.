@@ -92,6 +92,7 @@ class BillsSummary {
     required this.paid,
     required this.unpaid,
     required this.done,
+    required this.monthCount,
   });
 
   /// Total tagihan bulan ini & yang sudah lunas.
@@ -105,6 +106,9 @@ class BillsSummary {
   final List<Bill> done;
 
   int get count => unpaid.length + done.length;
+
+  /// Banyak tagihan bulan ini (lunas + belum), untuk "2 dari 4".
+  final int monthCount;
 }
 
 BillsSummary summarizeBills(Iterable<Bill> bills, DateTime today) {
@@ -128,6 +132,7 @@ BillsSummary summarizeBills(Iterable<Bill> bills, DateTime today) {
     paid: sum(done),
     unpaid: unpaid,
     done: done,
+    monthCount: thisMonth.length + done.length,
   );
 }
 

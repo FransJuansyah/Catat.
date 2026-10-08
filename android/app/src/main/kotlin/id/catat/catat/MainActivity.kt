@@ -27,6 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
         super.onCreate(savedInstanceState)
         AppNotifications.createChannels(this)
         AppNotifications.cleanupLegacy(this)
+        BillReminder.schedule(this)
         Thread { SlipFile.cleanCache(this) }.start()
         pendingLaunch = launchOf(intent)
     }
@@ -44,6 +45,11 @@ class MainActivity : FlutterFragmentActivity() {
         intent ?: return null
         return when (intent.action) {
             AppNotifications.ACTION_REMINDER -> mapOf("type" to "reminder")
+            BillReminder.ACTION_PAY -> {
+                val id = intent.getStringExtra(BillReminder.EXTRA_ID) ?: return null
+                androidx.core.app.NotificationManagerCompat.from(this).cancel(BillReminder.notificationId(id))
+                mapOf("type" to "bill", "id" to id)
+            }
             Intent.ACTION_SEND -> {
                 if (intent.type?.startsWith("image/") != true) return null
                 val uri = if (Build.VERSION.SDK_INT >= 33) {

@@ -42,6 +42,12 @@ class ReminderLaunch extends LaunchAction {
   const ReminderLaunch();
 }
 
+/// Notif tagihan: "Udah bayar" diketuk (layar 71).
+class BillLaunch extends LaunchAction {
+  const BillLaunch(this.billId);
+  final String billId;
+}
+
 /// Jembatan ke Android (MainActivity, channel id.catat.catat/device).
 /// Di-override di test.
 abstract class DeviceBridge {
@@ -114,6 +120,7 @@ class ChannelDeviceBridge implements DeviceBridge {
     return switch (m['type']) {
       'share' => ShareLaunch(m['path']! as String),
       'reminder' => const ReminderLaunch(),
+      'bill' => BillLaunch(m['id']! as String),
       _ => null,
     };
   }
@@ -126,4 +133,5 @@ class ChannelDeviceBridge implements DeviceBridge {
 String launchLocation(LaunchAction action) => switch (action) {
   ShareLaunch() => '/baca-struk',
   ReminderLaunch() => '/catat-ketik',
+  BillLaunch(:final billId) => '/tagihan?bayar=$billId',
 };
