@@ -77,6 +77,21 @@ class OnboardProfile {
     );
   }
 
+  /// Gabung dengan isian lama: yang belum diketahui di jawaban baru (AI lupa
+  /// membawanya) memakai nilai lama.
+  OnboardProfile over(OnboardProfile old) => OnboardProfile(
+    name: name.isNotEmpty ? name : old.name,
+    mode: mode ?? old.mode,
+    amount: amount > 0 ? amount : old.amount,
+    frequency: frequency ?? old.frequency,
+    payday: payday > 0 ? payday : old.payday,
+    weekday: weekday > 0 ? weekday : old.weekday,
+    estimate: estimate > 0 ? estimate : old.estimate,
+    balance: balance >= 0 ? balance : old.balance,
+    template: template ?? old.template,
+    bills: bills.isNotEmpty ? bills : old.bills,
+  );
+
   /// Template kantong: pilihan AI, selain itu default tipe pemasukan.
   PocketTemplate get pocketTemplate =>
       template ?? PocketTemplates.forMode(mode ?? IncomeMode.salary).first;
@@ -97,6 +112,7 @@ class OnboardProfile {
 class OnboardReply {
   const OnboardReply({
     required this.done,
+    this.finished = false,
     required this.reply,
     required this.profile,
     this.chips = const [],
@@ -106,6 +122,9 @@ class OnboardReply {
 
   /// AI sudah selesai bertanya → tampilkan ringkasan (layar 75).
   final bool done;
+
+  /// AI bilang "selesai" (profil mungkin masih perlu digabung dulu).
+  final bool finished;
   final String reply;
   final List<String> chips;
 
@@ -122,6 +141,7 @@ class OnboardReply {
     final chips = j['chips'];
     return OnboardReply(
       done: j['action'] == 'selesai' && profile.complete,
+      finished: j['action'] == 'selesai',
       offTopic: j['action'] == 'tolak',
       reply: (j['reply'] as String? ?? '').trim().isEmpty
           ? 'Lanjut ya, ceritain lagi.'
@@ -134,4 +154,29 @@ class OnboardReply {
       profile: profile,
     );
   }
+}
+
+/// Jawaban pertama saat daftar → nama panggilan.
+/// "aku fatimah" / "panggil aja Fatimah ya" → "Fatimah".
+String nameFromAnswer(String text) {
+  var t = text.trim().replaceAll(RegExp(r'[.!?,]+$'), '');
+  t = t.replaceFirst(
+    RegExp(
+      r'^((halo|hai|hi)[,\s]+)?(nama\s*(saya|aku|ku)|namaku|panggil(\s+(aja|saja))?|aku|saya|gue|gw)\s+',
+      caseSensitive: false,
+    ),
+    '',
+  );
+  t = t.replaceFirst(
+    RegExp(r'\s+(ya|aja|saja|kak)$', caseSensitive: false),
+    '',
+  );
+  final name = t
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .take(2)
+      .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+      .join(' ');
+  if (name.isEmpty) return text.trim();
+  return name.length > 30 ? name.substring(0, 30) : name;
 }

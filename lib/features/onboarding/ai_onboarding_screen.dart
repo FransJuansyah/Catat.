@@ -103,6 +103,27 @@ class _AiOnboardingScreenState extends ConsumerState<AiOnboardingScreen> {
     if (text.isEmpty || _thinking || _unavailable) return;
     _input.clear();
     _turns.add(ChatTurn.user(text));
+    // Jawaban pertama = nama: disimpan di HP, tidak perlu AI (AI kadang
+    // menanyakan nama lagi).
+    if (_turns.length == 2 && _profile.name.isEmpty) {
+      final name = nameFromAnswer(text);
+      final ask = 'Hai $name! Uang kamu biasanya dari mana?';
+      _turns.add(ChatTurn.bot(ask));
+      setState(() {
+        _msgs
+          ..add(_Msg.user(text))
+          ..add(
+            _Msg.bot(
+              ask,
+              chips: const ['Gaji bulanan', 'Uang jajan', 'Nggak tentu'],
+            ),
+          );
+        _profile = OnboardProfile(name: name);
+        _step = 2;
+      });
+      _scrollDown();
+      return;
+    }
     setState(() {
       _msgs.add(_Msg.user(text));
       _thinking = true;
@@ -117,13 +138,13 @@ class _AiOnboardingScreenState extends ConsumerState<AiOnboardingScreen> {
       switch (outcome) {
         case OnboardAnswered(:final reply):
           _turns.add(ChatTurn.bot(reply.reply));
-          _profile = reply.profile;
-          _step = reply.step;
-          _done = reply.done;
+          _profile = reply.profile.over(_profile);
+          _step = reply.step < _step && !reply.finished ? _step : reply.step;
+          _done = reply.finished && _profile.complete;
           _msgs.add(
             _Msg.bot(
               reply.reply,
-              chips: reply.done ? const [] : reply.chips,
+              chips: _done ? const [] : reply.chips,
               warn: reply.offTopic,
             ),
           );

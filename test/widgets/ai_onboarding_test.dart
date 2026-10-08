@@ -98,25 +98,25 @@ void main() {
     final chat = FakeChat()
       ..onboardReplies.addAll([
         answer({
-          'action': 'tanya',
-          'reply': 'Hai Frans! Uang kamu biasanya dari mana?',
-          'chips': ['Gaji bulanan', 'Uang jajan', 'Nggak tentu'],
-          'step': 2,
-          'profile': {'name': 'Frans', 'balance': -1},
-        }),
-        answer({
           'action': 'selesai',
           'reply': 'Sip, ini rangkuman obrolan kita. Cek dulu ya.',
           'chips': [],
           'step': 5,
-          'profile': profile,
+          // AI lupa membawa nama → nama dari HP tetap dipakai.
+          'profile': {...profile, 'name': ''},
         }),
       ]);
     final router = await pump(tester, chat);
     expect(find.textContaining('Mau dipanggil siapa?'), findsOneWidget);
     expect(find.text('Langkah 1 dari 5'), findsOneWidget);
 
-    await type(tester, 'Frans');
+    await type(tester, 'aku frans');
+    // Nama dibaca di HP, AI belum dipanggil.
+    expect(chat.sent, isEmpty);
+    expect(
+      find.text('Hai Frans! Uang kamu biasanya dari mana?'),
+      findsOneWidget,
+    );
     expect(find.text('Langkah 2 dari 5'), findsOneWidget);
     expect(find.text('Gaji bulanan'), findsOneWidget);
 
@@ -125,7 +125,7 @@ void main() {
     // Riwayat dikirim lengkap: sapaan bot, nama, jawaban bot, pilihan cepat.
     expect(chat.sent.last.map((t) => t.text), [
       'Halo! Aku yang bantu siapin catat. kamu. Mau dipanggil siapa?',
-      'Frans',
+      'aku frans',
       'Hai Frans! Uang kamu biasanya dari mana?',
       'Gaji bulanan',
     ]);
@@ -169,8 +169,9 @@ void main() {
       ..onboardReplies.add(const OnboardProblem(ChatOffline()));
     await pump(tester, chat);
     await type(tester, 'Frans');
+    await type(tester, 'Gaji bulanan');
     expect(find.textContaining('Sinyalnya putus'), findsOneWidget);
-    expect(find.text('Frans'), findsOneWidget);
+    expect(find.text('Gaji bulanan'), findsWidgets);
     expect(find.byType(TextField), findsOneWidget);
   });
 }
