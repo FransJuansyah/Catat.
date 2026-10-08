@@ -117,6 +117,16 @@ abstract final class PocketVisuals {
     'phone': LucideIcons.smartphone,
     'film': LucideIcons.film,
     'piggy': LucideIcons.piggyBank,
+    // Ikon keuangan (layar 68).
+    'banknote': LucideIcons.banknote,
+    'card': LucideIcons.creditCard,
+    'bank': LucideIcons.landmark,
+    'receipt': LucideIcons.receipt,
+    'wifi': LucideIcons.wifi,
+    'tv': LucideIcons.tv,
+    'train': LucideIcons.trainFront,
+    'bike': LucideIcons.bike,
+    'grad': LucideIcons.graduationCap,
   };
 
   /// Teks gelap di atas latar lembut warna kantong (mis. kartu tips).

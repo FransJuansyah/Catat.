@@ -188,6 +188,15 @@ const _categoryLabels = {
   'shirt': 'Baju',
   'heart': 'Kesehatan',
   'gift': 'Hadiah & traktir',
+  'card': 'Cicilan & kartu kredit',
+  'receipt': 'Tagihan & iuran',
+  'banknote': 'Tarik tunai',
+  'bank': 'Biaya bank',
+  'train': 'KRL & kereta',
+  'bike': 'Motor',
+  'wifi': 'Internet',
+  'tv': 'Langganan',
+  'grad': 'Sekolah',
 };
 
 /// Kelompokkan pengeluaran per kategori (ditebak dari judul) atau per judul
@@ -221,7 +230,7 @@ List<SpendGroup> topSpending(
         final title = list.first.title.trim();
         return SpendGroup(
           label: cat != null
-              ? _categoryLabels[cat]!
+              ? (_categoryLabels[cat] ?? 'Lainnya')
               : (title.isEmpty
                     ? 'Lainnya'
                     : title[0].toUpperCase() + title.substring(1)),

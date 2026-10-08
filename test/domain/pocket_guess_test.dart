@@ -53,6 +53,17 @@ void main() {
     expect(guess('Nonton', PocketType.keinginan, tanpaJajan), 'Wajib');
   });
 
+  test('ikon keuangan: cicilan & KRL ke kantong yang cocok', () {
+    final keuangan = [
+      pocket('Wajib', PocketType.wajib, 'house'),
+      pocket('Cicilan', PocketType.wajib, 'card'),
+      pocket('Jalan', PocketType.wajib, 'train'),
+    ];
+    expect(guess('Cicilan motor', PocketType.wajib, keuangan), 'Cicilan');
+    expect(guess('Isi KRL', PocketType.wajib, keuangan), 'Jalan');
+    expect(guess('Bayar kos', PocketType.wajib, keuangan), 'Wajib');
+  });
+
   test('ikon kantong juga dipakai', () {
     final ikon = [
       pocket('Pokok', PocketType.wajib, 'house'),

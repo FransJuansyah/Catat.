@@ -17,19 +17,38 @@ const _nameWords = <String, List<String>>{
   'film': ['hiburan', 'healing', 'nonton', 'hobi'],
   'shirt': ['baju', 'fashion', 'belanja'],
   'gift': ['hadiah', 'kado', 'sosial'],
+  'card': ['cicilan', 'kartu kredit', 'kredit', 'paylater', 'utang', 'hutang'],
+  'receipt': ['tagihan', 'asuransi', 'bpjs', 'iuran'],
+  'banknote': ['tunai', 'cash', 'dompet', 'pegangan'],
+  'bank': ['bank', 'admin'],
+  'train': ['transport', 'krl', 'kereta', 'commuter', 'perjalanan'],
+  'bike': ['motor', 'kendaraan', 'bengkel'],
+  'wifi': ['internet', 'wifi', 'tagihan', 'langganan'],
+  'tv': ['langganan', 'streaming', 'hiburan'],
+  'grad': ['sekolah', 'kuliah', 'pendidikan', 'belajar'],
 };
 
 /// Ikon kantong yang cocok dengan kategori pengeluaran.
 const _iconFor = <String, List<String>>{
   'coffee': ['coffee'],
   'food': ['coffee', 'food'],
-  'fuel': ['car', 'fuel', 'plane'],
-  'car': ['car', 'fuel', 'plane'],
+  'fuel': ['car', 'fuel', 'bike'],
+  'car': ['car', 'train', 'bike', 'fuel'],
   'house': ['house'],
   'heart': ['heart', 'shield'],
   'film': ['film', 'gamepad', 'music', 'sparkles'],
   'shirt': ['shirt', 'bag'],
   'gift': ['gift'],
+  'card': ['card'],
+  'receipt': ['receipt'],
+  'banknote': ['banknote'],
+  'bank': ['bank'],
+  'train': ['train', 'car'],
+  'bike': ['bike', 'car', 'fuel'],
+  'wifi': ['wifi', 'phone'],
+  'phone': ['phone', 'wifi'],
+  'tv': ['tv', 'film'],
+  'grad': ['grad'],
 };
 
 /// Kantong yang jelas bukan tempat jajan/belanja harian.

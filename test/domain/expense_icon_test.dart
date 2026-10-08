@@ -15,6 +15,19 @@ void main() {
     expect(g('Nonton bioskop'), 'film');
   });
 
+  test('ikon keuangan (layar 68)', () {
+    expect(g('Cicilan HP'), 'card');
+    expect(g('Bayar kartu kredit'), 'card');
+    expect(g('Isi KRL'), 'train');
+    expect(g('Top up kartu kereta'), 'train');
+    expect(g('Tarik tunai ATM'), 'banknote');
+    expect(g('Bayar wifi'), 'wifi');
+    expect(g('Netflix'), 'tv');
+    expect(g('SPP sekolah'), 'grad');
+    expect(g('BPJS'), 'receipt');
+    expect(g('Ganti oli'), 'bike');
+  });
+
   test('kata spesifik menang atas kata umum', () {
     expect(g('Rumah sakit'), 'heart');
     expect(g('Bayar kos'), 'house');

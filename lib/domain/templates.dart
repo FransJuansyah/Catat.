@@ -32,7 +32,63 @@ const pocketIconChoices = [
   'car',
   'phone',
   'film',
+  'banknote',
+  'card',
+  'bank',
+  'receipt',
+  'wifi',
+  'tv',
+  'train',
+  'bike',
+  'grad',
+  'fuel',
+  'bolt',
 ];
+
+/// Ikon kantong & tagihan dikelompokkan untuk lembar "Pilih ikon" (layar 68).
+const pocketIconGroups = <(String, List<String>)>[
+  (
+    'Uang & tagihan',
+    ['banknote', 'card', 'bank', 'piggy', 'receipt', 'phone', 'wifi', 'tv'],
+  ),
+  ('Jalan', ['train', 'bike', 'car', 'fuel', 'plane']),
+  (
+    'Harian',
+    ['food', 'coffee', 'bag', 'grad', 'house', 'bolt', 'shirt', 'heart'],
+  ),
+  ('Lainnya', ['shield', 'sparkles', 'gamepad', 'music', 'gift', 'film']),
+];
+
+/// Nama singkat tiap ikon di lembar "Pilih ikon".
+const pocketIconLabels = <String, String>{
+  'banknote': 'Tunai',
+  'card': 'Kartu kredit',
+  'bank': 'Bank',
+  'piggy': 'Tabungan',
+  'receipt': 'Tagihan',
+  'phone': 'Pulsa',
+  'wifi': 'Internet',
+  'tv': 'Langganan',
+  'train': 'KRL',
+  'bike': 'Motor',
+  'car': 'Mobil',
+  'fuel': 'Bensin',
+  'plane': 'Liburan',
+  'food': 'Makan',
+  'coffee': 'Kopi',
+  'bag': 'Belanja',
+  'grad': 'Sekolah',
+  'house': 'Rumah',
+  'bolt': 'Listrik',
+  'shirt': 'Baju',
+  'heart': 'Kesehatan',
+  'shield': 'Darurat',
+  'sparkles': 'Keinginan',
+  'gamepad': 'Game',
+  'music': 'Musik',
+  'gift': 'Hadiah',
+  'film': 'Nonton',
+};
 
 /// Kantong awal dari sebuah template (layar 19).
 class PocketSeed {

@@ -8,6 +8,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/icon_badge.dart';
+import '../../core/widgets/icon_picker_sheet.dart';
 import '../../core/widgets/pocket_chip.dart';
 import '../../data/providers.dart';
 import '../../domain/pocket_config.dart';
@@ -258,38 +259,50 @@ class _PocketEditScreenState extends ConsumerState<PocketEditScreen> {
     );
   }
 
+  /// Ikon kantong: ketuk untuk buka lembar "Pilih ikon" (layar 68).
   Widget _iconGrid(Color color) {
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.55,
-      children: [
-        for (final key in pocketIconChoices)
-          Material(
-            color: key == _iconKey ? PocketVisuals.soft(color) : AppColors.card,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.input),
-              side: key == _iconKey
-                  ? BorderSide(color: color, width: 2)
-                  : BorderSide.none,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () {
-                _focus.unfocus();
-                setState(() => _iconKey = key);
-              },
-              child: Icon(
-                PocketVisuals.icon(key),
-                size: 22,
-                color: key == _iconKey ? color : AppColors.ink,
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.input),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () async {
+          _focus.unfocus();
+          final key = await showIconPicker(context, selected: _iconKey!);
+          if (key != null && mounted) setState(() => _iconKey = key);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              IconBadge(
+                icon: PocketVisuals.icon(_iconKey!),
+                background: PocketVisuals.soft(color),
+                color: color,
+                size: AppSize.badgeSm,
+                square: true,
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  pocketIconLabels[_iconKey] ?? 'Ikon',
+                  style: AppText.style(15, AppText.w800),
+                ),
+              ),
+              Text(
+                'Ganti',
+                style: AppText.style(13, AppText.w700, color: AppColors.muted),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.faint,
+              ),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 
